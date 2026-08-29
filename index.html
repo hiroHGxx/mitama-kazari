@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>御霊かざり — 第0便（骨）</title>
+<style>
+  :root{
+    --night:#131320;      /* 宵闇藍 */
+    --night-2:#1B1B2E;    /* 宵闇藍・明 */
+    --panel:#100E1C;
+    --kindei:#D9A94C;     /* 金泥 */
+    --kindei-hi:#F0CE7E;
+    --shokko:#C93A2E;     /* 蝕紅 */
+    --ink:#E8E4D8;        /* 月白 */
+    --ink-dim:#9D93B5;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--night);
+    color:var(--ink);
+    font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
+    -webkit-text-size-adjust:100%;
+    padding:16px 16px calc(24px + env(safe-area-inset-bottom));
+    max-width:480px;margin:0 auto;
+  }
+  h1{font-size:18px;margin:0 0 2px;color:var(--kindei);letter-spacing:.08em;font-weight:400}
+  .sub{font-size:12px;color:var(--ink-dim);margin:0 0 18px}
+
+  .stage{
+    background:var(--night-2);border-radius:10px;padding:12px;margin-bottom:16px;
+  }
+  .frame{
+    position:relative;margin:0 auto;border-radius:4px;overflow:hidden;
+    box-shadow:0 8px 28px rgba(0,0,0,.55);
+    background:var(--night);
+  }
+  .frame canvas{display:block;width:100%;height:auto}
+  /* 安全域ガイド（保存画像には入らない） */
+  .guide{position:absolute;left:0;right:0;pointer-events:none}
+  .guide.top{top:0;height:17%;border-bottom:1px dashed rgba(217,169,76,.5)}
+  .guide.bottom{bottom:0;height:12%;border-top:1px dashed rgba(217,169,76,.5)}
+  .guide span{
+    position:absolute;right:6px;font-size:12px;color:var(--kindei);
+    font-family:system-ui,sans-serif;opacity:.85;
+  }
+  .guide.top span{bottom:4px}
+  .guide.bottom span{top:4px}
+
+  .row{display:flex;gap:10px;margin:14px 0 0}
+  button{
+    flex:1;min-height:48px;border-radius:5px;border:1px solid rgba(217,169,76,.45);
+    background:rgba(217,169,76,.10);color:var(--kindei-hi);
+    font-family:inherit;font-size:16px;letter-spacing:.06em;cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+  }
+  button:active{background:rgba(217,169,76,.2)}
+  button[disabled]{opacity:.4;cursor:default}
+  button.primary{background:var(--kindei);color:#1a1408;border-color:var(--kindei)}
+
+  .pick{display:flex;gap:8px;align-items:center;margin-top:14px;font-size:13px;color:var(--ink-dim);
+    font-family:system-ui,sans-serif}
+  .pick select,.pick input{
+    font-family:inherit;font-size:14px;background:var(--panel);color:var(--ink);
+    border:1px solid rgba(157,147,181,.35);border-radius:5px;padding:8px;min-height:44px;
+  }
+  .pick input[type=range]{flex:1;padding:0;border:0;background:transparent;min-height:44px}
+
+  h2{font-size:13px;color:var(--ink-dim);margin:22px 0 8px;font-weight:400;letter-spacing:.1em;
+    font-family:system-ui,sans-serif}
+  .log{
+    background:var(--panel);border-radius:10px;padding:12px 14px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.9;
+    color:var(--ink);white-space:pre-wrap;word-break:break-word;
+  }
+  .log b{color:var(--kindei);font-weight:400}
+  .ok{color:#7FBF8F}
+  .ng{color:var(--shokko)}
+  .na{color:var(--ink-dim)}
+  .alt{color:var(--kindei)}
+  footer{margin-top:22px;font-size:12px;color:var(--ink-dim);line-height:1.8;
+    font-family:system-ui,sans-serif}
+</style>
+</head>
+<body>
+
+<h1>御霊かざり</h1>
+<p class="sub">第0便（骨）— 保存が実機で通るかだけを確かめる版</p>
+
+<div class="stage">
+  <div class="frame" id="frame">
+    <canvas id="cv"></canvas>
+    <div class="guide top"><span>時計の帯</span></div>
+    <div class="guide bottom"><span>釦の帯</span></div>
+  </div>
+
+  <div class="pick">
+    <label for="spirit">御霊</label>
+    <select id="spirit"></select>
+  </div>
+  <div class="pick">
+    <label for="depth">深さ <b id="depthLabel" style="color:var(--kindei)">05</b></label>
+    <input type="range" id="depth" min="1" max="10" value="5">
+  </div>
+
+  <div class="row">
+    <button id="save" class="primary" disabled>写真に保存</button>
+  </div>
+</div>
+
+<h2>この端末で通ったこと</h2>
+<div class="log" id="log">測っています…</div>
+
+<footer>
+  破線は保存画像には入りません。画面で位置を見るための目安です。<br>
+  この道具は月蝕綺譚の二次創作で、公式とは関係ありません。絵は公式の素材蔵から読み込んでいます。
+</footer>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ---------- iOS: ダブルタップズーム抑止・gesturestart 抑止 ---------- */
+  var lastTouch = 0;
+  document.addEventListener('touchend', function(e){
+    var now = Date.now();
+    if (now - lastTouch <= 350 && e.target.tagName !== 'BUTTON'
+        && e.target.tagName !== 'SELECT' && e.target.tagName !== 'INPUT') {
+      e.preventDefault();
+    }
+    lastTouch = now;
+  }, {passive:false});
+  document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, {passive:false});
+
+  /* ---------- 診断の記録 ---------- */
+  var lines = [];
+  function put(label, state, note){
+    lines.push({label:label, state:state, note:note||''});
+    render();
+  }
+  function render(){
+    var html = lines.map(function(l){
+      var mark = l.state==='ok' ? '通った' : l.state==='ng' ? '落ちた'
+               : l.state==='na' ? '使えない' : l.state==='alt' ? '上書き中' : '…';
+      return '<b>' + l.label + '</b>  <span class="'+l.state+'">' + mark + '</span>'
+           + (l.note ? '\n   ' + l.note : '');
+    }).join('\n');
+    document.getElementById('log').innerHTML = html;
+  }
+
+  /* ---------- ① 端末の実寸を取る ---------- */
+  // #size=1179x2556 で寸法を上書きできる（他機種の見え方を手元で確かめるため）。
+  // ヘッドレスChromeは幅500px未満に縮まないので、これが無いとスマホの縦横比を再現できない。
+  var forced = /(?:^|[#&])size=(\d+)x(\d+)/.exec(location.hash);
+  var dpr = window.devicePixelRatio || 1;
+  var cssW = Math.min(screen.width, screen.height);
+  var cssH = Math.max(screen.width, screen.height);
+  var W = Math.round(cssW * dpr);
+  var H = Math.round(cssH * dpr);
+  if (forced) {
+    W = parseInt(forced[1], 10); H = parseInt(forced[2], 10);
+    put('端末の実寸', 'alt', W + ' × ' + H + '  （#size= で上書き中）');
+  } else {
+    put('端末の実寸', 'ok', W + ' × ' + H + '  （CSS ' + cssW + '×' + cssH + ' / dpr ' + dpr + '）');
+  }
+
+  var cv = document.getElementById('cv');
+  cv.width = W; cv.height = H;
+  var ctx = cv.getContext('2d');
+  document.getElementById('frame').style.aspectRatio = W + ' / ' + H;
+
+  /* ---------- 御霊の一覧（第0便は素材蔵で確認済みの数名だけ） ---------- */
+  var SPIRITS = [
+    {id:'anne',  name:'餡音'},
+    {id:'izuna', name:'イズナ'},
+    {id:'karma', name:'カルマ'},
+    {id:'nemu',  name:'ネム'},
+    {id:'oto',   name:'於兎'}
+  ];
+  var sel = document.getElementById('spirit');
+  SPIRITS.forEach(function(s){
+    var o = document.createElement('option');
+    o.value = s.id; o.textContent = s.name; sel.appendChild(o);
+  });
+
+  /* ---------- ② 素材蔵から crossOrigin で読む ---------- */
+  var KURA = 'https://kura.vibe.co.jp/fuda/';
+  var corsReported = false;
+
+  function fudaURL(id, depth){
+    return KURA + 'fuda_' + id + '_' + String(depth).padStart(2,'0') + '.webp';
+  }
+
+  function loadFuda(id, depth){
+    return new Promise(function(resolve, reject){
+      var img = new Image();
+      img.crossOrigin = 'anonymous';   // これが効かないと canvas が汚染されて書き出せない
+      img.onload = function(){ resolve(img); };
+      img.onerror = function(){ reject(new Error('読み込めない: ' + fudaURL(id, depth))); };
+      img.src = fudaURL(id, depth);
+    });
+  }
+
+  /* ---------- ③ 額装して描く ---------- */
+  function frame(img){
+    // 地 — 宵闇藍の二色一組。統合しない。純黒は使わない
+    var g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0,   '#131320');
+    g.addColorStop(0.62,'#1B1B2E');
+    g.addColorStop(1,   '#131320');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    // 絵の置き所 — 幅合わせ・下寄せ。釦の帯の少し上で止める
+    var bottom = H * 0.94;
+    var drawW = W, drawH = W * (img.height / img.width);
+    var top = bottom - drawH;
+    var clockFloor = H * 0.17;
+    if (top < clockFloor) {                    // 時計の帯に食い込むなら縮める
+      drawH = bottom - clockFloor;
+      drawW = drawH * (img.width / img.height);
+      top = clockFloor;
+    }
+    var left = (W - drawW) / 2;
+
+    ctx.drawImage(img, left, top, drawW, drawH);
+
+    // 下端を地へ溶かす — 額縁は描かない。闇から顕れている形にする
+    var fade = drawH * 0.20;
+    var f = ctx.createLinearGradient(0, bottom - fade, 0, bottom);
+    f.addColorStop(0, 'rgba(19,19,32,0)');
+    f.addColorStop(1, 'rgba(19,19,32,1)');
+    ctx.fillStyle = f;
+    ctx.fillRect(left, bottom - fade, drawW, H - (bottom - fade));
+
+    // 上端も少しだけ沈める（時計が読めるように）
+    var tf = ctx.createLinearGradient(0, top, 0, top + drawH * 0.12);
+    tf.addColorStop(0, 'rgba(19,19,32,0.85)');
+    tf.addColorStop(1, 'rgba(19,19,32,0)');
+    ctx.fillStyle = tf;
+    ctx.fillRect(left, top, drawW, drawH * 0.12);
+
+    // 蝕環 — 喰われた筆の円相をひとつだけ。
+    // 溶けた足元の闇の中に置く。札絵自身の月と競わず、時計にも掛からない場所はここしかない。
+    ctx.save();
+    ctx.strokeStyle = 'rgba(217,169,76,0.20)';
+    ctx.lineWidth = Math.max(2, W * 0.005);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(W/2, bottom - drawH * 0.045, W * 0.145, Math.PI * -0.60, Math.PI * 0.92);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /* ---------- ④ 保存する一枚を先に焼いておく ---------- */
+  // iOS は navigator.share をタップの直後に呼ばないと弾く。
+  // toBlob の非同期を待つとタップの資格が切れるので、先に File を作っておく。
+  var baked = null;
+  var saveBtn = document.getElementById('save');
+
+  function bake(){
+    saveBtn.disabled = true;
+    baked = null;
+    if (!cv.toBlob) { put('toBlob', 'na', 'この端末には toBlob が無い'); return; }
+    cv.toBlob(function(blob){
+      if (!blob) { put('toBlob', 'ng', 'canvas が汚染されている可能性'); return; }
+      try {
+        baked = new File([blob], 'mitama-kazari.png', {type:'image/png'});
+      } catch(e) {
+        baked = blob;   // File が作れない端末は Blob のまま
+      }
+      if (!corsReported) {
+        put('toBlob で書き出す', 'ok', Math.round(blob.size/1024) + ' KB の PNG');
+        var can = !!(navigator.canShare && baked instanceof File
+                     && navigator.canShare({files:[baked]}));
+        put('共有シートに画像を渡せるか', can ? 'ok' : 'na',
+            can ? 'navigator.share で「画像を保存」が出せる'
+                : 'navigator.canShare が画像を受け取らない → download へ落とす');
+        corsReported = true;
+      }
+      saveBtn.disabled = false;
+    }, 'image/png');
+  }
+
+  /* ---------- ⑤ 保存の3経路 ---------- */
+  saveBtn.addEventListener('click', function(){
+    if (!baked) return;
+
+    // 1) 共有シート
+    if (navigator.canShare && baked instanceof File && navigator.canShare({files:[baked]})) {
+      navigator.share({files:[baked]}).then(function(){
+        put('保存（共有シート）', 'ok', '共有シートまで開いた');
+      }).catch(function(e){
+        if (e && e.name === 'AbortError') put('保存（共有シート）', 'ok', '開いたが取り消された');
+        else { put('保存（共有シート）', 'ng', e && e.name); fallbackDownload(); }
+      });
+      return;
+    }
+    // 2) download
+    fallbackDownload();
+  });
+
+  function fallbackDownload(){
+    try {
+      var url = URL.createObjectURL(baked);
+      var a = document.createElement('a');
+      a.href = url; a.download = 'mitama-kazari.png';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+      put('保存（download）', 'ok', 'ファイルとして落とした（写真アプリには入らない）');
+    } catch(e) {
+      // 3) 長押しの案内
+      put('保存（download）', 'ng', e && e.message);
+      put('保存（長押し）', 'na', '上の絵を長押しして「写真に追加」を選んでください');
+    }
+  }
+
+  /* ---------- 組み立て ---------- */
+  var depthEl = document.getElementById('depth');
+  var depthLabel = document.getElementById('depthLabel');
+
+  function refresh(){
+    var id = sel.value;
+    var depth = parseInt(depthEl.value, 10);
+    depthLabel.textContent = String(depth).padStart(2,'0');
+    saveBtn.disabled = true;
+    loadFuda(id, depth).then(function(img){
+      if (!corsReported) {
+        put('素材蔵から crossOrigin で読む', 'ok', img.width + '×' + img.height + ' / ' + fudaURL(id, depth));
+      }
+      frame(img);
+      bake();
+    }).catch(function(e){
+      put('素材蔵から crossOrigin で読む', 'ng', e.message);
+    });
+  }
+
+  sel.addEventListener('change', refresh);
+  depthEl.addEventListener('input', function(){
+    depthLabel.textContent = String(parseInt(depthEl.value,10)).padStart(2,'0');
+  });
+  depthEl.addEventListener('change', refresh);
+
+  refresh();
+})();
+</script>
+</body>
+</html>
