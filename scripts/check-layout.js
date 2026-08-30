@@ -1,4 +1,4 @@
-/* 御霊かざり 画面の実測。
+/* 夜じたて 画面の実測。
  *
  *   NODE_PATH=../shikifuda-kasane/node_modules node scripts/check-layout.js
  *   （puppeteer-core は既存作から借りる。この作品には入れない）
@@ -224,7 +224,7 @@ async function main() {
         await new Promise(r => setTimeout(r, 2500));           // 遅れて届く読み込みを待ち受ける
         const pressed = btns.findIndex(b => b.getAttribute('aria-pressed') === 'true') + 1;
         let stored = null;
-        try { stored = JSON.parse(localStorage.getItem('mitama-kazari.pick')); } catch (e) {}
+        try { stored = JSON.parse(localStorage.getItem('yo-jitate.pick')); } catch (e) {}
         return { pressed, stored, disabled: document.getElementById('save').disabled };
       });
       if (r.err) ng('連打のあと', r.err);

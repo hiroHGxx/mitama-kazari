@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>御霊かざり</title>
+<title>夜じたて</title>
 <style>
   :root{
     --night:#131320;      /* 宵闇藍 */
@@ -199,7 +199,7 @@
 </head>
 <body>
 
-<h1>御霊かざり</h1>
+<h1>夜じたて</h1>
 <p class="sub">札絵を、その端末の夜に合わせて額装します</p>
 
 <div class="stage">
@@ -387,7 +387,7 @@
   frameEl.style.aspectRatio = W + ' / ' + H;
 
   /* ---------- 控え（try/catch。iframe内や設定次第で例外になる） ---------- */
-  var STORE = 'mitama-kazari.pick';
+  var STORE = 'yo-jitate.pick';
   function readPick(){
     try {
       var v = JSON.parse(localStorage.getItem(STORE));
@@ -571,7 +571,7 @@
   }
 
   function fileName(){
-    return 'mitama-kazari-' + curId + '-' + String(curDepth).padStart(2,'0') + '.png';
+    return 'yo-jitate-' + curId + '-' + String(curDepth).padStart(2,'0') + '.png';
   }
 
   /* ---------- ⑦ 保存の3経路 ---------- */
