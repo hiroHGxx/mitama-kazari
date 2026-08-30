@@ -487,6 +487,48 @@
   }
 
   /* ---------- ⑤ 額装して描く ---------- */
+  // 溶かし幅は絵の高さに対する割合。第2便で 上0.12→0.16・下0.20→0.26 に広げた
+  // （下は蝕環を闇の中へ収めるため・上は継ぎ目を長い距離で消すため）。
+  var HEAD_FADE = 0.16;
+  var FOOT_FADE = 0.26;
+
+  // 端の溶かしは「地の色で塗って隠す」のではなく「絵のほうを削る」。
+  // 両端で不透明度が 0 に着地し、かつ着地際の傾きも 0 に近づく形にする。
+  // 直線のグラデーションは端で傾きが折れるため、そこが線に見える（第0便の継ぎ目の正体）。
+  function rampStops(g, reversed){
+    var curve = [[0,1],[0.25,0.90],[0.5,0.5],[0.75,0.10],[1,0]];
+    curve.forEach(function(p){
+      var at = reversed ? 1 - p[0] : p[0];
+      g.addColorStop(at, 'rgba(0,0,0,' + p[1] + ')');
+    });
+  }
+
+  // 蝕環の描き手。検査（scripts/check-frame.js）が単体で走らせて、
+  // 釦の帯に絵の具が1滴も乗っていないことを測れるように、外へ出しておく。
+  function ringPainter(){
+    var bandTop = H * (1 - 0.12);            // 釦の帯の上端
+    var cx = W / 2, cy = H * 0.925, r = W * 0.21;
+    return {
+      cx:cx, cy:cy, r:r, bandTop:bandTop, fadeEnd:bandTop,
+      paint: function(c){
+        // 上端から釦の帯へ向かって、金泥そのものを 0 まで溶かす。
+        // 帯より下は最後の停留色（透明）が続くので、絵の具が乗らない。
+        var g2 = c.createLinearGradient(0, cy - r, 0, bandTop);
+        g2.addColorStop(0,    'rgba(217,169,76,0.55)');
+        g2.addColorStop(0.60, 'rgba(217,169,76,0.34)');
+        g2.addColorStop(1,    'rgba(217,169,76,0)');
+        c.save();
+        c.strokeStyle = g2;
+        c.lineWidth = Math.max(2, W * 0.005);
+        c.lineCap = 'round';
+        c.beginPath();
+        c.arc(cx, cy, r, Math.PI * -0.60, Math.PI * 0.92);
+        c.stroke();
+        c.restore();
+      }
+    };
+  }
+
   function frame(img){
     // 地 — 宵闇藍の二色一組。統合しない。純黒は使わない
     var g = ctx.createLinearGradient(0, 0, 0, H);
@@ -508,38 +550,57 @@
     }
     var left = (W - drawW) / 2;
 
-    ctx.drawImage(img, left, top, drawW, drawH);
+    // 絵をオフスクリーンに置き、上下の端を destination-out で削ってから地に載せる。
+    // 地の色を決め打ちして塗ると、その高さの実際の地（二色の間）と合わず段差が残る。
+    // 削れば地のグラデーションがそのまま透けるので、色を当てる必要そのものが無くなる。
+    var ow = Math.max(1, Math.round(drawW));
+    var oh = Math.max(1, Math.round(drawH));
+    var off = document.createElement('canvas');
+    off.width = ow; off.height = oh;
+    var octx = off.getContext('2d');
+    octx.drawImage(img, 0, 0, ow, oh);
+    octx.globalCompositeOperation = 'destination-out';
 
-    // 下端を地へ溶かす — 額縁は描かない。闇から顕れている形にする
-    var fade = drawH * 0.20;
-    var f = ctx.createLinearGradient(0, bottom - fade, 0, bottom);
-    f.addColorStop(0, 'rgba(19,19,32,0)');
-    f.addColorStop(1, 'rgba(19,19,32,1)');
-    ctx.fillStyle = f;
-    ctx.fillRect(left, bottom - fade, drawW, H - (bottom - fade));
+    var footFade = oh * FOOT_FADE;             // 下端を地へ溶かす（額縁は描かない）
+    var fg = octx.createLinearGradient(0, oh - footFade, 0, oh);
+    rampStops(fg, true);
+    octx.fillStyle = fg;
+    octx.fillRect(0, oh - footFade, ow, footFade);
 
-    // 上端も少しだけ沈める（時計が読めるように）
-    // TODO 第2便: 0.85 から始めているので境目に15%の段差が残る（実機で継ぎ目に見える）。
-    //             オフスクリーンの destination-out マスクに書き換える。
-    var tf = ctx.createLinearGradient(0, top, 0, top + drawH * 0.12);
-    tf.addColorStop(0, 'rgba(19,19,32,0.85)');
-    tf.addColorStop(1, 'rgba(19,19,32,0)');
-    ctx.fillStyle = tf;
-    ctx.fillRect(left, top, drawW, drawH * 0.12);
+    var headFade = oh * HEAD_FADE;             // 上端も溶かす（時計が読めるように）
+    var hg = octx.createLinearGradient(0, 0, 0, headFade);
+    rampStops(hg, false);
+    octx.fillStyle = hg;
+    octx.fillRect(0, 0, ow, headFade);
 
-    // 蝕環 — 喰われた筆の円相をひとつだけ。
-    // 溶けた足元の闇の中に置く。札絵自身の月と競わず、時計にも掛からない場所はここしかない。
-    ctx.save();
-    ctx.strokeStyle = 'rgba(217,169,76,0.20)';
-    ctx.lineWidth = Math.max(2, W * 0.005);
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.arc(W/2, bottom - drawH * 0.045, W * 0.145, Math.PI * -0.60, Math.PI * 0.92);
-    ctx.stroke();
-    ctx.restore();
+    octx.globalCompositeOperation = 'source-over';
+
+    // 蝕環 — 喰われた筆の円相をひとつだけ。散らさない。
+    // 決めごとが3つある。どれも第2便で一度ずつ間違えて直したもの:
+    //  ① **絵の前ではなく後ろに引く。** 前だと脚や履物の上に線が乗り、描き足した輪に見える
+    //  ② **釦の帯（下12%）で切らない。** クリップすると弧の端が横一直線で切れ、その切り口が
+    //     それ自体で不自然になる。**輪の側を溶かして**帯に届く前に消す
+    //  ③ 絵に減光されるぶん、素の値より濃く置く（0.20 では絵の後ろで見えなくなる）
+    var ring = ringPainter();
+    ring.paint(ctx);
+
+    ctx.drawImage(off, left, top, drawW, drawH);
+
+    // 検査から幾何を測れるようにしておく（scripts/check-frame.js が読む）
+    window.__yojitate = {
+      W:W, H:H, top:top, bottom:bottom, left:left, drawW:drawW, drawH:drawH,
+      headFade:headFade, footFade:footFade,
+      ring:{cx:ring.cx, cy:ring.cy, r:ring.r, bottom:ring.cy + ring.r, fadeEnd:ring.fadeEnd},
+      paintRing:ring.paint,
+      clockBand:H * 0.17, buttonBand:ring.bandTop
+    };
   }
 
   /* ---------- ⑥ 保存する一枚を先に焼いておく ---------- */
+  // 書き出しは JPEG 品質0.92。第2便で PNG と並べて測って決めた（scripts/check-frame.js）。
+  // 危ないのは「暗い地に縞が出ないか」だったが、**自作の地は1画素の最大ずれ 2/255・RMS 0.82** で
+  // 縞は出ない。札絵の中でも RMS 2.02。それで **3.89MB → 0.52MB（7分の1）**になる。
+  var OUT_TYPE = 'image/jpeg', OUT_QUALITY = 0.92, OUT_EXT = 'jpg', OUT_LABEL = 'JPEG';
   // iOS は navigator.share をタップの直後に呼ばないと弾く。
   // toBlob の非同期を待つとタップの資格が切れるので、先に File を作っておく。
   var baked = null;
@@ -553,12 +614,12 @@
       if (token !== seq) return;                 // 焼いている間に選び直された
       if (!blob) { put('toBlob で書き出す', 'ng', 'canvas が汚染されている可能性'); return; }
       try {
-        baked = new File([blob], fileName(), {type:'image/png'});
+        baked = new File([blob], fileName(), {type:OUT_TYPE});
       } catch(e) {
         baked = blob;   // File が作れない端末は Blob のまま
       }
       if (!corsReported) {
-        put('toBlob で書き出す', 'ok', Math.round(blob.size/1024) + ' KB の PNG');
+        put('toBlob で書き出す', 'ok', Math.round(blob.size/1024) + ' KB の ' + OUT_LABEL);
         var can = !!(navigator.canShare && baked instanceof File
                      && navigator.canShare({files:[baked]}));
         put('共有シートに画像を渡せるか', can ? 'ok' : 'na',
@@ -567,11 +628,11 @@
         corsReported = true;
       }
       saveBtn.disabled = false;
-    }, 'image/png');
+    }, OUT_TYPE, OUT_QUALITY);
   }
 
   function fileName(){
-    return 'yo-jitate-' + curId + '-' + String(curDepth).padStart(2,'0') + '.png';
+    return 'yo-jitate-' + curId + '-' + String(curDepth).padStart(2,'0') + '.' + OUT_EXT;
   }
 
   /* ---------- ⑦ 保存の3経路 ---------- */
