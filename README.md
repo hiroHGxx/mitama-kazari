@@ -37,8 +37,21 @@ iOS にも Android にも無いため、最後の一手は端末の標準操作�
 
 | 出どころ | 使っているもの |
 |---|---|
-| 公式配布（素材蔵 `kura.vibe.co.jp`） | 札絵（`fuda_<御霊>_01`〜`10`）。実行時に読み込む |
+| 公式配布（素材蔵 `kura.vibe.co.jp`） | 札絵 290枚（29柱 × 深さ01〜10）。実行時に読み込み、canvas に載せる |
+| 公式配布（`vibe.co.jp/luna-occulta/media/`） | 顔アイコン 29枚。選ぶ札に `<img>` で並べるだけ（canvas には載せない） |
 | 自作 | 額装の合成処理・画面・配色の当て方 |
+
+### 札絵のURLは組み立てられない
+
+素材蔵の札絵は径路が4系統に分かれ（`/fuda/` 80枚・`/fuda/v2/` 190枚・`/fuda/v3/` 10枚・`/fuda/app/` 10枚）、
+さらにファイル名にも `_v2` `_v3` の変種があります。**同じ御霊の10枚のなかで型が混ざる柱もあります**
+（アウン・カルラ・ナルカ・おえん・オロチ・呂屯）。
+
+そのため URL は組み立てず、公式MCP `kitan-lore` の `list_assets(kind=fuda)` から写した台帳
+（`scripts/fuda-ledger.json`）の値をそのまま使います。台帳から `index.html` へ焼く手順は下記。
+
+顔アイコンだけは別ホスト（`vibe.co.jp`）にあり、こちらは `Access-Control-Allow-Origin` を返しません。
+**選ぶ札に並べるだけなら CORS は要らない**ので `<img>` で表示しています。canvas には載せません。
 
 ## 二次創作について
 
@@ -50,7 +63,24 @@ iOS にも Android にも無いため、最後の一手は端末の標準操作�
 
 ## 開発
 
-単一の `index.html`。ビルドはありません。
+単一の `index.html`。ビルドはありません。名簿だけは台帳から焼きます。
+
+```
+node scripts/build-roster.js            # 台帳 → index.html の ROSTER 区画
+node scripts/build-roster.js --check    # 焼き直さず、食い違いだけ見る
+
+NODE_PATH=../shikifuda-kasane/node_modules node scripts/check-layout.js
+                                        # 画面の実測（押し所・文字・4系統の読み込み・連打）
+```
+
+`scripts/` の中身:
+
+| ファイル | 中身 |
+|---|---|
+| `fuda-ledger.json` | 素材蔵の札絵290枚の台帳（MCP `list_assets` の写し）。**手で編まない** |
+| `spirits-table.json` | 札絵を持つ29柱の表（MCP `list_spirits` の写し） |
+| `build-roster.js` | 上の2つを `index.html` へ焼く。台帳と表の食い違いはここで落ちる |
+| `check-layout.js` | ヘッドレスChromeで画面を実測する |
 
 ### デバッグハッシュ
 
