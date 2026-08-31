@@ -26,7 +26,8 @@ const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const ROOT = path.join(__dirname, '..');
 const OUT = path.join(__dirname, '..', '.frame-check');
 const SIZE = { w: 1179, h: 2556 };            // iPhone 15/16 の実寸
-const SPIRIT = 'sakuya', DEPTH = 5;
+const SPIRIT = process.env.SPIRIT || 'sakuya';
+const DEPTH = Number(process.env.DEPTH || 5);   // SPIRIT=orochi DEPTH=9 で切り替えて測れる
 
 let failures = 0;
 const ok = (l, n) => console.log(`  ✓ ${l}${n ? '  ' + n : ''}`);

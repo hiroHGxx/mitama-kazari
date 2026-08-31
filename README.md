@@ -19,6 +19,21 @@
 **壁紙に設定するのは、この道具の外です。** ブラウザから壁紙を書き換える手段は
 iOS にも Android にも無いため、最後の一手は端末の標準操作に渡します。
 
+## 毎朝ひとつだけ焼いています
+
+日付から一意に決まる一枚を、**額装済みで固定URLに置いています**（乱数は使いません。
+29柱 × 10段を290日で一巡し、御霊も深さも毎日変わります）。
+
+```
+https://github.com/hiroHGxx/yo-jitate/releases/download/daily/yo-jitate-1179x2556.jpg
+```
+
+iOSのショートカットから取りにくれば、**写真アプリの編集画面を通らずに**壁紙へ入ります
+（編集画面を通ると iOS が勝手に拡大するため）。手順は **[docs/SHORTCUT.md](docs/SHORTCUT.md)**。
+
+**額装済みの一枚はリポジトリに置いていません。** Release の資産として毎日置き換えています——
+木に積むと履歴に溜まり、それは「壁紙集」になってしまうためです。
+
 ## 額装でしていること
 
 2:3 の札絵（1024×1536）は、9:19.5 の画面には入りません。
@@ -78,6 +93,11 @@ NODE_PATH=../shikifuda-kasane/node_modules node scripts/check-layout.js
                                         # 画面の実測（押し所・文字・4系統の読み込み・連打）
 NODE_PATH=../shikifuda-kasane/node_modules node scripts/check-frame.js [比較用HTML]
                                         # 額装の実測（継ぎ目・蝕環の絵の具・書き出しの重さ）
+SPIRIT=orochi DEPTH=9 NODE_PATH=... node scripts/check-frame.js
+                                        # 測る一枚を変える
+
+NODE_PATH=../shikifuda-kasane/node_modules node scripts/daily.js [YYYY-MM-DD] [出力先]
+                                        # 今日の一枚を焼く（日付を渡せば任意の日を再現できる）
 ```
 
 `scripts/` の中身:
@@ -89,6 +109,8 @@ NODE_PATH=../shikifuda-kasane/node_modules node scripts/check-frame.js [比較�
 | `build-roster.js` | 上の2つを `index.html` へ焼く。台帳と表の食い違いはここで落ちる |
 | `check-layout.js` | ヘッドレスChromeで画面を実測する |
 | `check-frame.js` | 書き出される一枚の中身を実測する。継ぎ目は目で見ず、**行ごとの平均輝度の跳ね**で判定する |
+| `daily.js` | 今日の一枚を3寸法ぶん焼く。日付から一意に決める（`.github/workflows/daily.yml` が毎朝呼ぶ） |
+| `daily-notes.js` | Release のお品書きを組む。文面をYAMLに埋めない（引用符と改行がシェルで壊れるため） |
 
 ### デバッグハッシュ
 

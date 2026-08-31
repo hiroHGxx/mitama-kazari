@@ -37,6 +37,11 @@ const ICON = 'https://vibe.co.jp/luna-occulta/media/img/canon/';
 
 function die(msg) { console.error('✗ ' + msg); process.exit(1); }
 
+/* このファイルを require したときは、並びと表を渡すだけで何も書き換えない
+   （scripts/daily.js が「今日の一枚」を決めるのに使う）。 */
+module.exports = { CANON_ORDER, SATO_ORDER, TABLE, LEDGER };
+if (require.main !== module) return;
+
 /* ---- 突き合わせ（生成の前に、台帳と表が食い違っていないかを見る） ---- */
 const byId = new Map(TABLE.spirits.map(s => [s.id, s]));
 if (byId.size !== 29) die(`spirits-table.json が29柱ではない（${byId.size}柱）`);

@@ -1,0 +1,82 @@
+# 今日の一枚を焼いて、固定URLに置く。
+#
+# ショートカットが取りにくる先:
+#   https://github.com/hiroHGxx/yo-jitate/releases/download/daily/yo-jitate-1179x2556.jpg
+#
+# **額装済みの絵はリポジトリに入れない。** Release の資産として毎日置き換える。
+# 木に積むと git の履歴に額装済みの札絵が延々と溜まり、それは「壁紙集」になってしまう
+# （企画書§4「壁紙集・素材集と読める見せ方をしない」）。Release なら常に今日の一枚だけが残る。
+#
+# 原本は相変わらず1枚も置かない。焼くたびに素材蔵から読み、額装して、書き出している。
+name: 今日の一枚
+
+on:
+  schedule:
+    - cron: '0 20 * * *'      # 20:00 UTC = 翌 5:00 JST
+  workflow_dispatch:
+    inputs:
+      date:
+        description: '焼く日付（YYYY-MM-DD・空なら今日）'
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily
+  cancel-in-progress: false
+
+jobs:
+  bake:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: puppeteer-core を入れる（この作品には持たせない）
+        run: |
+          mkdir -p /tmp/pp && cd /tmp/pp
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund puppeteer-core@23 >/dev/null
+          echo "NODE_PATH=/tmp/pp/node_modules" >> "$GITHUB_ENV"
+
+      - name: Chrome の在り処を確かめる
+        run: |
+          BIN=$(which google-chrome || which google-chrome-stable || which chromium-browser)
+          echo "使う Chrome: $BIN"
+          echo "CHROME_PATH=$BIN" >> "$GITHUB_ENV"
+
+      - name: 台帳と焼き込みが食い違っていないか
+        run: node scripts/build-roster.js --check
+
+      - name: 今日の一枚を焼く
+        run: node scripts/daily.js "${{ inputs.date }}" .daily
+
+      - name: 焼けたものを検める
+        run: |
+          set -e
+          test -s .daily/today.json
+          cat .daily/today.json
+          for f in .daily/*.jpg; do
+            sz=$(stat -c%s "$f")
+            echo "$f  $((sz/1024)) KB"
+            # 20KB未満は「真っ黒な板を焼いた」に近い。空振りに気づかず配らないための床
+            test "$sz" -gt 20480 || { echo "✗ $f が小さすぎる"; exit 1; }
+            file "$f" | grep -q JPEG || { echo "✗ $f が JPEG ではない"; exit 1; }
+          done
+
+      - name: お品書きを組む
+        run: node scripts/daily-notes.js .daily/today.json > .daily/notes.md && cat .daily/notes.md
+
+      - name: 固定URLへ置き換える
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          gh release view daily >/dev/null 2>&1 \
+            || gh release create daily --title "今日の一枚" --notes-file .daily/notes.md
+          gh release upload daily .daily/yo-jitate-*.jpg .daily/today.json --clobber
+          gh release edit daily --notes-file .daily/notes.md
