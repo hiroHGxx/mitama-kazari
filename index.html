@@ -167,6 +167,21 @@
   .howto b{color:var(--kindei-hi);font-weight:400}
   .howto a{color:var(--kindei);text-decoration:underline;text-underline-offset:3px}
 
+  .urlbox{
+    margin:8px 0 0;padding:8px 10px;border-radius:5px;
+    background:var(--night);border:1px solid rgba(157,147,181,.25);
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.7;
+    color:var(--ink);word-break:break-all;
+  }
+  .copy{
+    display:block;width:100%;min-height:44px;margin-top:8px;
+    border-radius:5px;border:1px solid rgba(217,169,76,.45);
+    background:rgba(217,169,76,.10);color:var(--kindei-hi);
+    font-size:14px;letter-spacing:.06em;
+  }
+  .copy:active{background:rgba(217,169,76,.22)}
+  .copy.done{background:var(--kindei);color:#1a1408;border-color:var(--kindei)}
+
   details{background:var(--panel);border-radius:10px;padding:10px 14px;margin-bottom:14px}
   summary{
     font-size:13px;color:var(--ink-dim);cursor:pointer;list-style:none;
@@ -242,6 +257,20 @@
     この拡大の正体は「<b>被写体を切り取る</b>」という設定です。
     <a href="https://github.com/hiroHGxx/yo-jitate/blob/main/docs/SHORTCUT.md">ショートカットを2手だけ組む</a>と
     そこを切れるので、縮める操作なしで額装どおりに入ります（実機で確認済み）。
+  </p>
+</div>
+
+<div class="howto" id="dailyBox" hidden>
+  <h3>毎朝ひとりでに替えるなら</h3>
+  <p>
+    この端末（<b id="dailySize">—</b>）に合う「今日の一枚」を、毎朝ここに置いています。
+    ショートカットの「<b>URLの内容を取得</b>」にこれを貼ってください。
+  </p>
+  <p class="urlbox" id="dailyUrl"></p>
+  <button class="copy" id="copyUrl">URLをコピー</button>
+  <p>
+    作り方は<a href="https://github.com/hiroHGxx/yo-jitate/blob/main/docs/SHORTCUT.md">こちら</a>。
+    日付から一意に決まるので、29柱×10段を290日で一巡します。
   </p>
 </div>
 
@@ -716,6 +745,49 @@
       put('素材蔵から crossOrigin で読む', 'ng', e.message);
     });
   }
+
+  /* ---------- ⑨ 毎朝の一枚のURL（この端末の寸法に合うものだけ出す） ---------- */
+  // 打ち込ませない。iOSでは長いURLの手入力が現実的な障壁になる（2026-08-31 オーナーが詰まった）。
+  (function daily(){
+    var PUBLISHED = ['1179x2556', '1290x2796', '1170x2532'];
+    var key = W + 'x' + H;
+    var box = document.getElementById('dailyBox');
+    document.getElementById('dailySize').textContent = W + ' × ' + H;
+    if (PUBLISHED.indexOf(key) < 0) return;          // 合う寸法が無いなら出さない（合わない絵を渡さない）
+    var url = 'https://github.com/hiroHGxx/yo-jitate/releases/download/daily/yo-jitate-' + key + '.jpg';
+    document.getElementById('dailyUrl').textContent = url;
+    box.hidden = false;
+
+    var btn = document.getElementById('copyUrl');
+    btn.addEventListener('click', function(){
+      function done(){
+        btn.textContent = '写しました';
+        btn.classList.add('done');
+        setTimeout(function(){ btn.textContent = 'URLをコピー'; btn.classList.remove('done'); }, 2200);
+      }
+      // navigator.clipboard は HTTPS かつタップの内側でしか通らない。両方満たしている。
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(done).catch(fallback);
+      } else { fallback(); }
+
+      function fallback(){
+        // 古い端末向け。選択して execCommand に落とす
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = url;
+          ta.setAttribute('readonly', '');
+          ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+          document.body.appendChild(ta);
+          ta.select(); ta.setSelectionRange(0, url.length);
+          document.execCommand('copy');
+          ta.remove();
+          done();
+        } catch(e) {
+          btn.textContent = 'コピーできません。上の文字を長押しして選んでください';
+        }
+      }
+    });
+  })();
 
   refresh();
 })();
