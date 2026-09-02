@@ -29,17 +29,44 @@
     --line:rgba(157,147,181,.28);
   }
   *{box-sizing:border-box}
-  html,body{margin:0;padding:0}
+  html,body{margin:0;padding:0;height:100%}
   body{
     background:var(--night);
     color:var(--ink);
     font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
     -webkit-text-size-adjust:100%;
-    padding:16px 16px calc(24px + env(safe-area-inset-bottom));
-    max-width:480px;margin:0 auto;
+    overflow:hidden;              /* 第6便: 1画面のアプリ。頁は縦に流れない */
   }
-  h1{font-size:18px;margin:0 0 2px;color:var(--kindei);letter-spacing:.08em;font-weight:400}
-  .sub{font-size:12px;color:var(--ink-dim);margin:0 0 14px}
+
+  /* ---- 第6便「額を画面に」の骨（SPEC §7.1） ----
+     額は「画面 − 引き出し」の領域いっぱいに contain で置き、上下左右とも中央。
+     **引き出しは額の上に被せない**——不透明の引き出しでは絵を見ながら選べず、
+     半透明は「とどまる透過」なので採らない（SHITSURAE §1）。だから額のほうを伸び縮みさせる。 */
+  #app{
+    position:fixed;inset:0;
+    height:100vh;    /* dvh を知らない端末の保険 */
+    height:100dvh;   /* iOS のバーが出ている時は、その見えている高さ（第5便の vh の罠） */
+    display:flex;flex-direction:column;
+  }
+  .stage{
+    position:relative;flex:1 1 auto;min-height:0;
+    display:flex;align-items:center;justify-content:center;
+    padding:4px 12px;
+    padding-top:calc(4px + env(safe-area-inset-top));
+  }
+
+  /* ≡ ほかの案内。額の袖（左右の余白）に置く。額が画面幅いっぱいになる端末では
+     時計の帯の上に乗るが、帯は暗い地なので読める（SPEC §7.1）。 */
+  .menubtn{
+    position:absolute;z-index:4;
+    top:calc(2px + env(safe-area-inset-top));
+    left:calc(2px + env(safe-area-inset-left));
+    width:44px;height:44px;padding:0;
+    border:none;border-radius:5px;background:transparent;
+    color:var(--kindei);font-size:20px;line-height:1;
+    font-family:system-ui,sans-serif;
+  }
+  .menubtn:active{background:rgba(217,169,76,.16)}
 
   /* 開幕＝「顕れ」（SHITSURAE §1 の時間割）。
      幕は張らない。額の中で絵が闇から顕れ、周りの部品はそのあと一段（0.7秒）で立ち上がる。
@@ -50,47 +77,42 @@
   body.locked .rise{pointer-events:none}
   body.nofade .rise{transition:none}   /* 画面タップで飛ばしたときは即座に立ち上げる */
 
-  .stage{
-    position:relative;   /* 題の顕れ（.daimei）の座標の基準 */
-    background:var(--night-2);border-radius:10px;padding:12px;margin-bottom:16px;
-    text-align:center;
-  }
-  /* 題の顕れ（第5便その2・2026-09-02 オーナー裁定A）。
-     開幕の1.2秒、額の**時計の帯**（上17%・壁紙で時計が立つ場所）に題字を大きく浮かべ、
-     部品が立つときに小見出し（h1）の位置へ縮んで収まる。タップは増えない。
-     DOM なので保存画像には入らない。動かすのは transform と opacity だけ。座標は JS が実測して入れる。 */
-  .daimei{
-    position:absolute;left:0;top:0;margin:0;z-index:2;
-    font-size:32px;line-height:1;letter-spacing:.08em;color:var(--kindei);font-weight:400;
-    white-space:nowrap;pointer-events:none;opacity:0;
-    transform-origin:0 0;
-    transition:opacity 300ms ease;
-  }
-  .daimei.show{opacity:1}
-  /* 着地は動き（700ms）より先に消える（350ms）。副題の上を通る後半で残像が文字に重ならないように */
-  .daimei.land{transition:transform 700ms ease,opacity 350ms ease;opacity:0}
-  body.nofade .daimei{transition:none}
-  .daimei.gone{display:none}
-  /* 押し所が画面外へ出ないよう、プレビューの背は viewport で頭打ちにする
-     （SHITSURAE.md §6「結果カードの背を伸ばさない」）。
-     第1便で下に選ぶ帯が2本増えたぶん 52vh → 44vh へ譲り、第5便で注記を畳んだぶん戻した。
-     **「写真に保存」が最初の画面に収まるほうが優先**（scripts/check-layout.js が3端末で測る）。 */
   .frame{
-    position:relative;display:inline-block;border-radius:4px;overflow:hidden;
+    position:relative;flex:none;border-radius:4px;overflow:hidden;
     box-shadow:0 8px 28px rgba(0,0,0,.55);
     background:var(--night);
     line-height:0;
-    max-width:100%;               /* aspect-ratio は JS が端末の実寸から入れる */
-    /* **iOS Safari の vh は「バーが隠れている時の高さ」で固定**（852）。バーが出ていて
-       740 しか見えていない時も 48vh は 409px になり、その差ぶん「写真に保存」が下へ押し出される。
-       svh（小さいほうの viewport）なら見えている高さで測るので、バーが出ていても収まる。
-       対応していない端末のために vh を先に書いて残す。 */
-    height:48vh;
-    height:48svh;
+    max-width:100%;max-height:100%;
+    /* 寸法（width/height）は JS が「画面 − 引き出し」に contain して px で入れる。
+       aspect-ratio も JS が入れるが、CSS の aspect-ratio と max-* の組み合わせは
+       端末で丸めが割れるので、決め手は実測のほうにしてある。 */
   }
+  .frame.fit{transition:width 300ms ease,height 300ms ease}   /* 引き出しの開閉に合わせて伸び縮み */
   /* 枠の側で寸法を決める。canvas に max-* を掛けると canvas だけが縮み、
      枠は shrink-to-fit の幅（＝利用可能幅）のまま残ってガイドの破線がはみ出す。 */
   .frame canvas{display:block;width:100%;height:100%}
+
+  /* 題字は額の**時計の帯**（上17%・壁紙で時計が立つ場所）の中に常設する。
+     開幕の「題の顕れ」は**同じ場所で大→小**（第6便で移動が要らなくなった＝縮んで溶けるだけ）。
+     DOM なので保存画像には入らない。line-height:1 と -.5em で、どちらも帯の中心に重なる。 */
+  .frame h1,.frame .daimei{
+    position:absolute;left:0;right:0;top:8.5%;margin:-.5em 0 0;z-index:2;
+    text-align:center;line-height:1;white-space:nowrap;
+    color:var(--kindei);letter-spacing:.08em;font-weight:400;
+    pointer-events:none;
+  }
+  .frame h1{font-size:18px}
+  .frame .daimei{
+    z-index:3;font-size:32px;opacity:0;   /* 実際の大きさは JS が額の幅から決める（24〜32px） */
+    transform-origin:50% 50%;
+    transition:opacity 300ms ease;
+  }
+  .daimei.show{opacity:1}
+  /* 着地（縮み）は動き（700ms）より先に消える（350ms）。飛ぶ文字は動きより先に消す */
+  .daimei.land{transition:transform 700ms ease,opacity 350ms ease;opacity:0}
+  body.nofade .daimei{transition:none}
+  .daimei.gone{display:none}
+
   /* 安全域ガイド（保存画像には入らない） */
   .guide{position:absolute;left:0;right:0;pointer-events:none}
   .guide.top{top:0;height:17%;border-bottom:1px dashed rgba(217,169,76,.5)}
@@ -112,22 +134,51 @@
   button{
     font-family:inherit;-webkit-tap-highlight-color:transparent;cursor:pointer;
   }
+
+  /* ---- 引き出し（bottom sheet・SPEC §7.2） ----
+     状態は開／閉の2つだけ。既定は**開**（0手で選べることを守る）。開閉は記憶しない。
+     地は --night-2・不透明。二色一組（--night と --night-2）はここで保つ。 */
+  .sheet{
+    flex:none;width:100%;max-width:480px;margin:0 auto;
+    background:var(--night-2);
+    border-radius:10px 10px 0 0;
+    box-shadow:0 -6px 20px rgba(0,0,0,.45);
+    padding:0 12px calc(6px + env(safe-area-inset-bottom));
+  }
+  .grip{
+    display:flex;align-items:center;justify-content:center;
+    width:100%;height:44px;padding:0;
+    border:none;background:transparent;
+    touch-action:none;              /* つまみの上の縦スワイプは頁ではなく引き出しが取る */
+  }
+  .grip .bar{display:block;width:44px;height:4px;border-radius:4px;background:var(--line)}
+  .sheet[data-open="false"] .grip .bar{background:rgba(217,169,76,.45)}
+  .sheet[data-open="false"] .sheet-body{display:none}   /* 閉のとき帯と階梯は画面から消える */
+
   .save{
-    display:block;width:100%;min-height:48px;margin-top:14px;
+    display:block;width:100%;min-height:48px;margin-top:10px;
     border-radius:5px;border:1px solid var(--kindei);
     background:var(--kindei);color:#1a1408;
     font-size:16px;letter-spacing:.06em;
   }
   .save:active{background:var(--kindei-hi)}
   .save[disabled]{opacity:.4;cursor:default}
+  /* 二次創作の一行（KITAN.md「画面にも1行」）。これが下にあるぶん、
+     「写真に保存」の下端は画面のいちばん下に触れない（SHITSURAE 末尾）。 */
+  .credit{
+    margin:6px 0 0;font-size:12px;line-height:1.5;color:var(--ink-dim);
+    font-family:system-ui,sans-serif;text-align:center;
+  }
 
   /* 名札。額と帯のあいだに1行だけ。押すと「開いて閉じる札」が開く（SHITSURAE §7・既にある型を使う）。
-     **帯＝隣を流し見る／札＝名前で飛ぶ**、と役を分けている。 */
+     **帯＝隣を流し見る／札＝名前で飛ぶ**、と役を分けている。
+     つまみと同じく、この上の縦スワイプでも引き出しが開け閉めできる。 */
   .chooser{
-    display:flex;align-items:center;gap:8px;width:100%;margin-top:10px;
+    display:flex;align-items:center;gap:8px;width:100%;
     min-height:44px;padding:6px 12px;
     border-radius:5px;border:1px solid var(--line);
     background:var(--night);color:var(--ink);text-align:left;
+    touch-action:none;
   }
   .chooser:active{background:var(--night-2)}
   .chooser .nm{font-size:15px;color:var(--ink);white-space:nowrap;flex:none}
@@ -142,7 +193,7 @@
      <img> にJSのクリックを付けず <button> で包む（SHITSURAE §2）。
      選んだ印は金泥の面。輪では出さない——円の光り物は蝕環ひとつだけの決まりがある。 */
   .strip{
-    display:flex;gap:2px;margin-top:10px;
+    display:flex;gap:2px;margin-top:8px;
     /* 面の縁まで流す（左右の余白ぶん食い込ませ、その幅を内側の余白で返す）。
        幅375pxでちょうど5柱で切れると、**続きがあることが見えない**（SEで実測）。 */
     margin-left:-12px;margin-right:-12px;padding:0 12px 2px;
@@ -172,14 +223,14 @@
      見た目は「**選んだ段まで金泥が満ちる**」——段ごとに濃くし、選んだ段だけ明るい金泥にする。
      数字は選んだ段にだけ出す（読む文字を1つに絞る。他の段は aria-label が読む）。
      幅390pxで44px×10は入らないため、押し所は24pxを床にして詰める（SHITSURAE §2）。
-     なぞって選べるので touch-action:pan-y（横のなぞりだけ取り、縦送りは端末に返す。
-     縦送りに化けたときは pointercancel が来るので、段を元に戻して確定しない）。 */
+     第6便で頁が流れなくなったので touch-action:none に戻した（縦送りに返す理由が消えた）。
+     縦送りに化けたときの cancelDrag は残してある。 */
   .depth-head{
-    margin:10px 0 6px;font-size:12px;line-height:1.4;color:var(--ink-dim);
+    margin:8px 0 4px;font-size:12px;line-height:1.4;color:var(--ink-dim);
     font-family:system-ui,sans-serif;text-align:left;letter-spacing:.06em;
   }
   .depth-head b{color:var(--kindei);font-weight:400}
-  .depth{display:flex;gap:3px;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+  .depth{display:flex;gap:3px;touch-action:none;user-select:none;-webkit-user-select:none}
   .depth button{
     flex:1;min-width:24px;min-height:40px;padding:0;
     border-radius:5px;border:1px solid var(--line);
@@ -194,14 +245,14 @@
   .depth-note b{color:var(--kindei);font-weight:400}
 
   /* 開いて閉じる札。帳・角丸・✕・外側タップまで既存作と同じ作法にする（SHITSURAE §7）。
-     第5便で「壁紙にするとき、ひとつだけ」の札（#tips）も同じ型に載せた。
+     第5便で「壁紙にするとき、ひとつだけ」の札（#tips）、第6便で ≡ の札（#menu）も同じ型に載せた。
      遊ぶ人の指が覚えた作法を増やさない。 */
-  #picker,#tips{
+  #picker,#tips,#menu{
     position:fixed;inset:0;display:none;align-items:center;justify-content:center;
     background:rgba(10,10,20,.72);z-index:12;
     padding:16px 16px calc(16px + env(safe-area-inset-bottom));
   }
-  #picker.show,#tips.show{display:flex}
+  #picker.show,#tips.show,#menu.show{display:flex}
   .pick-card{
     position:relative;display:flex;flex-direction:column;
     width:min(92vw,380px);max-height:86vh;
@@ -214,7 +265,7 @@
     margin:0 0 12px;font-size:15px;font-weight:400;color:var(--kindei);
     letter-spacing:.1em;text-align:center;
   }
-  #pick-close,#tips-close{
+  #pick-close,#tips-close,#menu-close{
     position:absolute;top:10px;right:12px;width:32px;height:32px;
     font-size:14px;color:var(--ink-dim);background:transparent;
     border:1px solid var(--line);border-radius:50%;
@@ -246,6 +297,8 @@
     background:rgba(217,169,76,.16);border-color:rgba(217,169,76,.45);color:var(--kindei-hi);
   }
 
+  /* ≡ の札の中身（副題・手順・毎朝・通ったこと・脚注）。最初の画面からは外してある。 */
+  .sub{font-size:12px;line-height:1.7;color:var(--ink-dim);margin:0 0 12px}
   .howto{
     background:var(--night-2);border-left:2px solid var(--kindei);
     border-radius:0 10px 10px 0;padding:12px 14px;margin-bottom:14px;
@@ -277,8 +330,8 @@
     font-family:system-ui,sans-serif;min-height:24px;display:flex;align-items:center;
   }
   summary::-webkit-details-marker{display:none}
-  summary::before{content:"▸ ";color:var(--kindei);margin-right:4px}
-  details[open] summary::before{content:"▾ "}
+  summary::before{content:"\25B8 ";color:var(--kindei);margin-right:4px}
+  details[open] summary::before{content:"\25BE "}
   .log{
     margin-top:10px;
     font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.9;
@@ -289,95 +342,62 @@
   .ng{color:var(--shokko)}
   .na{color:var(--ink-dim)}
   .alt{color:var(--kindei)}
-  footer{margin-top:20px;font-size:12px;color:var(--ink-dim);line-height:1.8;
+  footer{margin:0;font-size:12px;color:var(--ink-dim);line-height:1.8;
     font-family:system-ui,sans-serif}
 
   /* 背の低い画面では縦の余白だけを詰める。横の幅指定は壊さない（SHITSURAE §6）。
-     ここの 37vh は第1便で実測して決めた値。第5便でも動かさない（SPEC §2.6）。 */
+     第6便では額が「画面 − 引き出し」を取るので、詰めたぶんがそのまま額の大きさになる。 */
   @media (max-height:700px){
-    body{padding-top:10px}
-    .sub{margin-bottom:10px}
-    .frame{height:37vh;height:37svh}
-    .chooser{margin-top:6px}
-    .strip{margin-top:4px}
-    .depth-head{margin:5px 0 3px}
+    .stage{padding:2px 10px}
+    .strip{margin-top:6px}
+    .depth-head{margin:6px 0 3px}
     .save{margin-top:8px}
+    .credit{margin-top:4px}
   }
 </style>
 </head>
 <body class="veiled locked">
 
-<h1 class="rise">夜じたて</h1>
-<p class="sub rise">札絵を、その端末の夜に合わせて額装します</p>
+<!-- 第6便「額を画面に」。1画面のアプリ。頁は縦にスクロールしない（SPEC §7.1） -->
+<div id="app">
 
-<div class="stage">
-  <div class="daimei" id="daimei" aria-hidden="true">夜じたて</div>
-  <div class="frame" id="frame">
-    <canvas id="cv"></canvas>
-    <div class="guide top rise"><span>時計の帯</span></div>
-    <div class="guide bottom rise"><span>釦の帯</span></div>
-    <div class="waiting">顕れています…</div>
+  <div class="stage" id="stage">
+    <!-- 額の袖（左右の余白）に置く。額が画面幅いっぱいの端末では時計の帯の上に乗る -->
+    <button class="menubtn rise" id="menuBtn" aria-label="ほかの案内" aria-haspopup="dialog">≡</button>
+
+    <div class="frame" id="frame">
+      <canvas id="cv"></canvas>
+      <!-- 題字は額の時計の帯の中に常設。開幕の「題の顕れ」は同じ場所で大→小 -->
+      <h1 class="rise">夜じたて</h1>
+      <div class="daimei" id="daimei" aria-hidden="true">夜じたて</div>
+      <div class="guide top rise"><span>時計の帯</span></div>
+      <div class="guide bottom rise"><span>釦の帯</span></div>
+      <div class="waiting">顕れています…</div>
+    </div>
   </div>
 
-  <button class="chooser rise" id="chooser" aria-haspopup="dialog">
-    <span class="nm" id="chooserName">—</span>
-    <span class="tg" id="chooserTag"></span>
-    <span class="arrow">名前で選ぶ ▾</span>
-  </button>
+  <!-- 引き出し。既定は開。閉じると額が大きくなる（額の上には被せない） -->
+  <div class="sheet rise" id="sheet" data-open="true">
+    <button class="grip" id="grip" aria-expanded="true" aria-controls="sheetBody"
+            aria-label="選ぶところを閉じる"><span class="bar"></span></button>
 
-  <div class="strip rise" id="strip" role="group" aria-label="御霊を選ぶ"></div>
+    <button class="chooser" id="chooser" aria-haspopup="dialog">
+      <span class="nm" id="chooserName">—</span>
+      <span class="tg" id="chooserTag"></span>
+      <span class="arrow">名前で選ぶ ▾</span>
+    </button>
 
-  <p class="depth-head rise"><b>顕れの深さ</b>　<span id="depthNum">05</span>／10</p>
-  <div class="depth rise" id="depth" role="group" aria-label="顕れの深さ"></div>
+    <div class="sheet-body" id="sheetBody">
+      <div class="strip" id="strip" role="group" aria-label="御霊を選ぶ"></div>
+      <p class="depth-head"><b>顕れの深さ</b>　<span id="depthNum">05</span>／10</p>
+      <div class="depth" id="depth" role="group" aria-label="顕れの深さ"></div>
+    </div>
 
-  <button id="save" class="save rise" disabled>写真に保存</button>
+    <button id="save" class="save" disabled>写真に保存</button>
+    <p class="credit">月蝕綺譚の二次創作です。公式とは関係ありません</p>
+  </div>
+
 </div>
-
-<details class="rise">
-  <summary>壁紙にする手順</summary>
-  <p class="depth-note">
-    <b>顕れの深さ</b> — 浅いほど暗く静かに、深いほど極彩色に顕れます。
-    時計も通知もこの上に乗るので、壁紙には浅い段のほうがよく効きます。
-  </p>
-  <div class="howto-body" id="howtoText">
-    <p>
-      写真アプリで開く → 共有 → <b>壁紙に設定</b>。
-      ただし <b>iOSは勝手に顔まで拡大します</b>。
-      設定画面で<b>指2本を近づけて縮め</b>、上に藍色の帯が出るまでズームを戻してください。
-      そこが額装した通りの姿です。
-    </p>
-    <p>
-      この拡大の正体は「<b>被写体を切り取る</b>」という設定です。
-      <a href="https://github.com/hiroHGxx/yo-jitate/blob/main/docs/SHORTCUT.md">ショートカットを2手だけ組む</a>と
-      そこを切れるので、縮める操作なしで額装どおりに入ります（実機で確認済み）。
-    </p>
-  </div>
-</details>
-
-<details class="howto rise" id="dailyBox" hidden>
-  <summary>毎朝ひとりでに替えるなら</summary>
-  <p>
-    この端末（<b id="dailySize">—</b>）に合う「今日の一枚」を、毎朝ここに置いています。
-    ショートカットの「<b>URLの内容を取得</b>」にこれを貼ってください。
-  </p>
-  <p class="urlbox" id="dailyUrl"></p>
-  <button class="copy" id="copyUrl">URLをコピー</button>
-  <p>
-    作り方は<a href="https://github.com/hiroHGxx/yo-jitate/blob/main/docs/SHORTCUT.md">こちら</a>。
-    日付から一意に決まるので、29柱×10段を290日で一巡します。
-  </p>
-</details>
-
-<details class="rise">
-  <summary>この端末で通ったこと</summary>
-  <div class="log" id="log">測っています…</div>
-</details>
-
-<footer class="rise">
-  破線は保存画像には入りません。画面で位置を見るための目安です。<br>
-  この道具は月蝕綺譚の二次創作で、公式とは関係ありません。絵は公式の素材蔵から読み込み、
-  この端末の中で額装しています。原本を配ってはいません。
-</footer>
 
 <div id="picker" role="dialog" aria-modal="true" aria-label="御霊を選ぶ">
   <div class="pick-card">
@@ -393,6 +413,64 @@
     <button id="tips-close" aria-label="閉じる">✕</button>
     <h2>壁紙にするとき、ひとつだけ</h2>
     <div class="pick-body howto-body" id="tipsBody"></div>
+  </div>
+</div>
+
+<!-- ≡ の札（第6便・SPEC §7.3）。最初の画面から外した説明はすべてここへ集めた。
+     #dailyBox の中身・id・hidden の挙動・#copyUrl の JS は一切変えていない（第3便のまま移しただけ）。 -->
+<div id="menu" role="dialog" aria-modal="true" aria-label="ほかの案内">
+  <div class="pick-card">
+    <button id="menu-close" aria-label="閉じる">✕</button>
+    <h2>ほかの案内</h2>
+    <div class="pick-body" id="menuBody">
+      <p class="sub">札絵を、その端末の夜に合わせて額装します</p>
+
+      <details>
+        <summary>壁紙にする手順</summary>
+        <p class="depth-note">
+          <b>顕れの深さ</b> — 浅いほど暗く静かに、深いほど極彩色に顕れます。
+          時計も通知もこの上に乗るので、壁紙には浅い段のほうがよく効きます。
+        </p>
+        <div class="howto-body" id="howtoText">
+          <p>
+            写真アプリで開く → 共有 → <b>壁紙に設定</b>。
+            ただし <b>iOSは勝手に顔まで拡大します</b>。
+            設定画面で<b>指2本を近づけて縮め</b>、上に藍色の帯が出るまでズームを戻してください。
+            そこが額装した通りの姿です。
+          </p>
+          <p>
+            この拡大の正体は「<b>被写体を切り取る</b>」という設定です。
+            <a href="https://github.com/hiroHGxx/yo-jitate/blob/main/docs/SHORTCUT.md">ショートカットを2手だけ組む</a>と
+            そこを切れるので、縮める操作なしで額装どおりに入ります（実機で確認済み）。
+          </p>
+        </div>
+      </details>
+
+      <details class="howto" id="dailyBox" hidden>
+        <summary>毎朝ひとりでに替えるなら</summary>
+        <p>
+          この端末（<b id="dailySize">—</b>）に合う「今日の一枚」を、毎朝ここに置いています。
+          ショートカットの「<b>URLの内容を取得</b>」にこれを貼ってください。
+        </p>
+        <p class="urlbox" id="dailyUrl"></p>
+        <button class="copy" id="copyUrl">URLをコピー</button>
+        <p>
+          作り方は<a href="https://github.com/hiroHGxx/yo-jitate/blob/main/docs/SHORTCUT.md">こちら</a>。
+          日付から一意に決まるので、29柱×10段を290日で一巡します。
+        </p>
+      </details>
+
+      <details>
+        <summary>この端末で通ったこと</summary>
+        <div class="log" id="log">測っています…</div>
+      </details>
+
+      <footer>
+        破線は保存画像には入りません。画面で位置を見るための目安です。<br>
+        この道具は月蝕綺譚の二次創作で、公式とは関係ありません。絵は公式の素材蔵から読み込み、
+        この端末の中で額装しています。原本を配ってはいません。
+      </footer>
+    </div>
   </div>
 </div>
 
@@ -491,24 +569,30 @@
      この段は他のどこよりも先に置く——ここより上で転ぶと、部品が伏せたまま起き上がらない。 */
   var RISE_AT = 1200, UNLOCK_AT = 1260;
   var introDone = false, tRise = 0, tUnlock = 0;
-  /* 題の顕れ。額の時計の帯の真ん中に据え、立ち上がりの時刻に h1 の位置へ縮めて仕舞う。
-     座標は実測（端末ごとに額の寸法が違う）。frameEl はこの下で作られるが、呼ぶのは rAF の中なので間に合う。 */
+  /* 題の顕れ。第6便で題字（h1）が額の時計の帯に常設になったので、
+     **顕れは「同じ場所で大→小」だけ**になった（移動の着地が要らない＝縮んで溶ける）。
+     h1 と .daimei は同じ座標式（top:8.5% / margin:-.5em / line-height:1）で帯の中心に重なるので、
+     transform-origin:50% 50% の scale ひとつで h1 の大きさに着地する。
+     frameEl はこの下で作られるが、呼ぶのは rAF の中なので間に合う。 */
   var daimei = document.getElementById('daimei');
   function placeDaimei(){
-    var st = daimei.parentNode.getBoundingClientRect();
     var fr = frameEl.getBoundingClientRect();
     // 額の幅から大きさを決める（背の低い端末では額が細く、32px だと額を横に越える）。24〜32px
-    daimei.style.fontSize = Math.max(24, Math.min(32, fr.width * 0.19)) + 'px';
-    daimei.style.left = (fr.left - st.left + (fr.width - daimei.offsetWidth) / 2) + 'px';
-    daimei.style.top  = (fr.top  - st.top  + fr.height * 0.17 / 2 - daimei.offsetHeight / 2) + 'px';
+    var fs = Math.max(24, Math.min(32, fr.width * 0.19));
+    daimei.style.fontSize = fs + 'px';
+    // それでも額より広い額（引き出しを開いた SE など）では、額に収まるところまで詰める。
+    // ただし 12px の床は割らないので 18px（＝h1 と同じ）で止める。
+    var need = daimei.scrollWidth;
+    if (need > fr.width - 8) {
+      daimei.style.fontSize = Math.max(18, fs * (fr.width - 8) / need) + 'px';
+    }
     daimei.classList.add('show');
   }
   function landDaimei(){
     if (daimei.classList.contains('land')) return;
     var h1 = document.querySelector('h1');
-    var a = daimei.getBoundingClientRect(), b = h1.getBoundingClientRect();
     var sc = parseFloat(getComputedStyle(h1).fontSize) / parseFloat(getComputedStyle(daimei).fontSize);
-    daimei.style.transform = 'translate(' + (b.left - a.left) + 'px,' + (b.top - a.top) + 'px) scale(' + sc + ')';
+    daimei.style.transform = 'scale(' + sc + ')';
     daimei.classList.add('land');
     setTimeout(function(){ daimei.classList.add('gone'); }, 760);   // 立ち上がり（700ms）が済んでから仕舞う
   }
@@ -570,6 +654,74 @@
   cv.width = W; cv.height = H;
   var ctx = cv.getContext('2d');
   frameEl.style.aspectRatio = W + ' / ' + H;
+
+  /* ---------- ①-b 額を「画面 − 引き出し」に contain で収める（第6便・SPEC §7.1） ----------
+     引き出しの開閉で領域が変わったら、額が伸び縮みする（CSS で 300ms）。
+     **引き出しを額の上に被せない**ので、額は常に全部見える。
+     CSS の aspect-ratio ＋ max-width/max-height の組み合わせは端末で丸めが割れるため、
+     決め手は実測にして px で入れる（aspect-ratio は保険として残してある）。 */
+  var stageEl = document.getElementById('stage');
+  var sheetEl = document.getElementById('sheet');
+  function fitFrame(){
+    var cs = getComputedStyle(stageEl);
+    var availW = stageEl.clientWidth  - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    var availH = stageEl.clientHeight - parseFloat(cs.paddingTop)  - parseFloat(cs.paddingBottom);
+    if (!(availW > 0) || !(availH > 0)) return;
+    var w = Math.min(availW, availH * (W / H));
+    frameEl.style.width  = w + 'px';
+    frameEl.style.height = (w * H / W) + 'px';
+  }
+  fitFrame();
+  addEventListener('resize', fitFrame);
+  addEventListener('orientationchange', fitFrame);
+  /* 引き出しの背丈は中身（帯・階梯）が組み上がるまで確定しない。
+     **ここで一度測っただけでは、まだ空の引き出しの寸法で額を決めてしまう**ので、
+     引き出しの背丈が動いたら測り直す。額の側は引き出しの背丈を変えないので回らない。 */
+  if (window.ResizeObserver) new ResizeObserver(fitFrame).observe(sheetEl);
+
+  /* ---------- ①-c 引き出し（開／閉の2つだけ・既定は開・記憶しない。SPEC §7.2） ---------- */
+  var gripEl  = document.getElementById('grip');
+  function sheetOpen(){ return sheetEl.getAttribute('data-open') === 'true'; }
+  function setSheet(open){
+    open = !!open;
+    if (sheetOpen() === open) return;
+    sheetEl.setAttribute('data-open', open ? 'true' : 'false');
+    gripEl.setAttribute('aria-expanded', open ? 'true' : 'false');
+    gripEl.setAttribute('aria-label', open ? '選ぶところを閉じる' : '選ぶところを開く');
+    fitFrame();                     // 領域が変わったので額を測り直す
+    if (open) centerStrip();        // 開いたら選んでいる柱をまた真ん中へ
+  }
+
+  /* つまみ・名札の上での縦スワイプでも開閉する（上＝開・下＝閉）。
+     縦に動いた回は、そのあとの click を出さない（名札だと札が開いてしまうため）。 */
+  var swY = 0, swOn = false, swFired = false;
+  function swStart(e){ swOn = true; swFired = false; swY = e.clientY; }
+  function swMove(e){
+    if (!swOn) return;
+    var dy = e.clientY - swY;
+    if (dy <= -20)      { swOn = false; swFired = true; setSheet(true); }
+    else if (dy >= 20)  { swOn = false; swFired = true; setSheet(false); }
+  }
+  function swEnd(){ swOn = false; }
+  function swTook(){ if (!swFired) return false; swFired = false; return true; }
+  [gripEl, document.getElementById('chooser')].forEach(function(el){
+    el.addEventListener('pointerdown', swStart);
+    el.addEventListener('pointermove', swMove);
+    el.addEventListener('pointerup', swEnd);
+    el.addEventListener('pointercancel', swEnd);
+  });
+  gripEl.addEventListener('click', function(){
+    if (swTook()) return;
+    setSheet(!sheetOpen());
+  });
+
+  /* ---------- ①-d ≡ の札（#picker と同じ「開いて閉じる札」の型。SPEC §7.3） ---------- */
+  var menu = document.getElementById('menu');
+  function openMenu(){ menu.classList.add('show'); }
+  function closeMenu(){ menu.classList.remove('show'); }
+  document.getElementById('menuBtn').addEventListener('click', openMenu);
+  document.getElementById('menu-close').addEventListener('click', closeMenu);
+  menu.addEventListener('click', function(e){ if (e.target === menu) closeMenu(); });
 
   /* ---------- 控え（try/catch。iframe内や設定次第で例外になる） ---------- */
   var STORE = 'yo-jitate.pick';
@@ -635,7 +787,10 @@
     if (b) b.scrollIntoView({block:'center'});
   }
   function closePicker(){ picker.classList.remove('show'); }
-  document.getElementById('chooser').addEventListener('click', openPicker);
+  document.getElementById('chooser').addEventListener('click', function(){
+    if (swTook()) return;       // 縦スワイプで引き出しを開け閉めした回は札を開かない
+    openPicker();
+  });
   document.getElementById('pick-close').addEventListener('click', closePicker);
   picker.addEventListener('click', function(e){ if (e.target === picker) closePicker(); });
 
@@ -680,6 +835,7 @@
   function centerStrip(){
     var b = stripButtons[curId];
     if (!b || !b.scrollIntoView) return;
+    if (!stripEl.clientWidth) return;   // 引き出しが閉じている（display:none）ときは測れない
     try { b.scrollIntoView({block:'nearest', inline:'center'}); }
     catch(e) { stripEl.scrollLeft = b.offsetLeft - (stripEl.clientWidth - b.offsetWidth) / 2; }
   }
@@ -1069,6 +1225,7 @@
     if (e.key !== 'Escape') return;
     if (picker.classList.contains('show')) closePicker();
     else if (tips.classList.contains('show')) closeTips();
+    else if (menu.classList.contains('show')) closeMenu();
   });
 
   /* ---------- ⑧ 組み立て ---------- */
@@ -1178,6 +1335,9 @@
   })();
 
   paintGround();          // 0ms の額 — 地と蝕環だけ。絵はこのあと顕れる
+  fitFrame();             // 帯と階梯が組み上がった引き出しで、額をもう一度測り直す
+  // 初回の寸法は跳ねさせない（0 から伸びるアニメーションになってしまう）
+  requestAnimationFrame(function(){ frameEl.classList.add('fit'); });
   refresh(OPEN_MS);
   centerStrip();
 })();

@@ -4,15 +4,22 @@
  *   （puppeteer-core は既存作から借りる。この作品には入れない）
  *
  * 見るもの:
- *   1 押し所が最初の画面に収まる  第0便で「写真に保存」が画面外へ出た。二度踏まないため実測する
- *   2 押し所の実寸と文字の大きさ  24pxの床・12pxの床（SHITSURAE §2 §3）
- *   3 顔アイコン29柱が全部出る    素材蔵ではなく canon 側の別ホストから来る
- *   4 札絵が4系統ぜんぶ読める      /fuda/ /fuda/v2/ /fuda/v3/ /fuda/app/ と _v2 _v3 のファイル名変種
- *   5 選び直しても canvas が汚れない  crossOrigin が効いていないと toBlob が落ちる
- *   6 連打しても最後の一枚に落ち着く  古い読み込みが後から返って上書きしないこと
- *   7 顔の帯（第5便）              29柱・顔が全部出る・押し所44px以上・帯で選べる
- *   8 深さをなぞって選べる（第5便）  読み込みは離した時に1回だけ
- *   9 開幕「顕れ」の時間割（第5便）  1200ms前は押せない／1260ms以降押せる／タップで飛ばせる／
+ *   1 額が全部見える（第6便）      上端が画面内・下端が引き出しの上端より上・左右が画面内
+ *   2 額の実寸（第6便）            393×740 で 閉 ≥250px 幅・開 ≥180px 幅／**閉じると額が大きくなる**
+ *   3 保存が画面内で最下端に触れない 第0便で画面外へ出た。ホームバーに飲まれないことも見る
+ *   4 頁が縦にスクロールしない（第6便） 1画面のアプリなので scrollHeight ≦ clientHeight
+ *   5 引き出し（第6便）            つまみで開閉・aria-expanded が変わる・閉のとき帯と階梯が消える・
+ *                                  つまみと名札の縦スワイプでも開閉する（そのとき札は開かない）
+ *   6 ≡ の札（第6便）              開く・✕・外側・Esc／中に #dailyBox・#copyUrl・#log・二次創作の明記／
+ *                                  #copyUrl が従来どおり動く（clipboard を差し替えて書き込みを数える）
+ *   7 押し所の実寸と文字の大きさ    ≡・つまみ・名札・帯は44px／階梯は24px／12pxの床（SHITSURAE §2 §3）
+ *   8 顔アイコン29柱が全部出る      素材蔵ではなく canon 側の別ホストから来る
+ *   9 札絵が4系統ぜんぶ読める        /fuda/ /fuda/v2/ /fuda/v3/ /fuda/app/ と _v2 _v3 のファイル名変種
+ *  10 選び直しても canvas が汚れない  crossOrigin が効いていないと toBlob が落ちる
+ *  11 連打しても最後の一枚に落ち着く  古い読み込みが後から返って上書きしないこと
+ *  12 顔の帯（第5便）              29柱・顔が全部出る・押し所44px以上・帯で選べる
+ *  13 深さをなぞって選べる（第5便）  読み込みは離した時に1回だけ
+ *  14 開幕「顕れ」の時間割（第5便）  1200ms前は押せない／1260ms以降押せる／タップで飛ばせる／
  *                                  **絵の顕れが終わってから保存が有効になる**
  *
  * 罠:
@@ -33,6 +40,7 @@ const ROOT = path.join(__dirname, '..');
 const HTML = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 
 let failures = 0;
+const SIZES = [];   // 額の実寸（端末 × 開／閉）。最後に表で出す
 /* 開幕が終わる（＝押せるようになる）まで待つ。第5便から 1260ms は誰も押せない。
    **指と同じ関門を通す**ため、待たずに叩く検査を書かない
    （待たずに page.click すると pointer-events:none をすり抜けて別の要素を叩き、
@@ -70,35 +78,242 @@ async function main() {
       await page.setViewport({ width: dev.w, height: dev.h, deviceScaleFactor: 2 });
       await page.goto(base + '#size=' + dev.real, { waitUntil: 'load' });
       await page.waitForFunction(() => !document.getElementById('save').disabled, { timeout: 30000 });
+      await ready(page);   // 開幕が終わるまで叩かない。**検査は指と同じ関門を通す**（第5便で踏んだ穴）
 
-      const m = await page.evaluate(() => {
+      const shot = () => page.evaluate(() => {
         const r = el => el.getBoundingClientRect();
-        const save = document.getElementById('save');
+        const box = el => { const b = r(el); return { top: b.top, bottom: b.bottom, left: b.left, right: b.right, w: b.width, h: b.height }; };
         const depth = [...document.querySelectorAll('#depth button')];
+        const strip = [...document.querySelectorAll('#strip button')];
         const sizes = [...document.querySelectorAll('body *')]
           .filter(el => el.children.length === 0 && el.textContent.trim())
           .map(el => ({ t: el.textContent.trim().slice(0, 12), px: parseFloat(getComputedStyle(el).fontSize) }));
         return {
-          saveBottom: r(save).bottom,
-          saveTop: r(save).top,
-          chooser: (({ width, height }) => ({ width, height }))(r(document.getElementById('chooser'))),
-          depthMin: Math.min(...depth.map(b => Math.min(r(b).width, r(b).height))),
+          save: box(document.getElementById('save')),
+          frame: box(document.getElementById('frame')),
+          sheet: box(document.getElementById('sheet')),
+          menuBtn: box(document.getElementById('menuBtn')),
+          grip: box(document.getElementById('grip')),
+          chooser: box(document.getElementById('chooser')),
+          stripMin: strip.length ? Math.min(...strip.map(b => Math.min(r(b).width, r(b).height))) : -1,
+          depthMin: depth.length ? Math.min(...depth.map(b => Math.min(r(b).width, r(b).height))) : -1,
           depthCount: depth.length,
-          frameH: r(document.getElementById('frame')).height,
+          open: document.getElementById('sheet').getAttribute('data-open'),
           docH: document.documentElement.scrollHeight,
+          cliH: document.documentElement.clientHeight,
+          bodyH: document.body.scrollHeight,
           smallest: sizes.reduce((a, b) => (b.px < a.px ? b : a), { t: '-', px: 999 })
         };
       });
 
-      judge(m.saveBottom <= dev.h, '「写真に保存」が最初の画面に収まる',
-        `下端 ${m.saveBottom.toFixed(0)}px / 画面 ${dev.h}px（余り ${(dev.h - m.saveBottom).toFixed(0)}px）`);
+      const m = await shot();
+      const side = b => Math.min(b.w, b.h);
+
+      // 1 額が全部見える（引き出しに覆われない・画面から出ない）
+      judge(m.frame.top >= -0.5 && m.frame.bottom <= m.sheet.top + 0.5
+            && m.frame.left >= -0.5 && m.frame.right <= dev.w + 0.5,
+        '額が全部見える（引き出しに覆われない）',
+        `額 上${m.frame.top.toFixed(0)} 下${m.frame.bottom.toFixed(0)} / 引き出しの上端 ${m.sheet.top.toFixed(0)} / 左${m.frame.left.toFixed(0)} 右${m.frame.right.toFixed(0)}`);
+      // 3 保存が画面内で、いちばん下端に触れていない（ホームバーに飲まれる。SHITSURAE 末尾）
+      judge(m.save.bottom <= dev.h, '「写真に保存」が画面内にある',
+        `下端 ${m.save.bottom.toFixed(0)}px / 画面 ${dev.h}px（余り ${(dev.h - m.save.bottom).toFixed(0)}px）`);
+      judge(dev.h - m.save.bottom >= 8, '「写真に保存」が画面のいちばん下端に触れていない',
+        `下に ${(dev.h - m.save.bottom).toFixed(0)}px 空いている`);
+      // 4 頁が縦にスクロールしない（1画面のアプリ）
+      judge(m.docH <= m.cliH + 1 && m.bodyH <= m.cliH + 1, '頁が縦にスクロールしない',
+        `文書 ${m.docH}px / body ${m.bodyH}px / 画面 ${m.cliH}px`);
+      // 7 押し所と文字
       judge(m.depthCount === 10, '深さの帯が10段', `${m.depthCount}段`);
       judge(m.depthMin >= 24, '深さの押し所が24px以上', `最小 ${m.depthMin.toFixed(1)}px`);
-      judge(Math.min(m.chooser.width, m.chooser.height) >= 24, '御霊を選ぶ入口が24px以上',
-        `${m.chooser.width.toFixed(0)}×${m.chooser.height.toFixed(0)}px`);
+      judge(side(m.menuBtn) >= 44, '≡（ほかの案内）が44px以上',
+        `${m.menuBtn.w.toFixed(0)}×${m.menuBtn.h.toFixed(0)}px`);
+      judge(side(m.grip) >= 44, '引き出しのつまみが44px以上',
+        `${m.grip.w.toFixed(0)}×${m.grip.h.toFixed(0)}px`);
+      judge(side(m.chooser) >= 44, '御霊を選ぶ入口（名札）が44px以上',
+        `${m.chooser.w.toFixed(0)}×${m.chooser.h.toFixed(0)}px`);
+      judge(m.stripMin >= 44, '帯の押し所が44px以上', `最小 ${m.stripMin.toFixed(1)}px`);
       judge(m.smallest.px >= 12, '12px未満の文字が無い', `最小 ${m.smallest.px}px「${m.smallest.t}」`);
       judge(errors.length === 0, '例外が出ていない', errors.join(' / '));
-      console.log(`     （枠 ${m.frameH.toFixed(0)}px / 文書全体 ${m.docH}px）`);
+
+      // 2 額の実寸。引き出しを閉じると額が大きくなる
+      judge(m.open === 'true', '引き出しの既定は開', `data-open=${m.open}`);
+      await page.click('#grip');
+      await new Promise(r => setTimeout(r, 500));           // 伸び縮み（300ms）が終わるまで待つ
+      const c = await shot();
+      judge(c.open === 'false', 'つまみを押すと閉じる', `data-open=${c.open}`);
+      judge(c.frame.w > m.frame.w + 1, '閉じると額が大きくなる',
+        `開 ${m.frame.w.toFixed(0)}px 幅 → 閉 ${c.frame.w.toFixed(0)}px 幅`);
+      judge(c.frame.top >= -0.5 && c.frame.bottom <= c.sheet.top + 0.5,
+        '閉のときも額が全部見える',
+        `額 上${c.frame.top.toFixed(0)} 下${c.frame.bottom.toFixed(0)} / 引き出しの上端 ${c.sheet.top.toFixed(0)}`);
+      judge(c.docH <= c.cliH + 1, '閉のときも頁が縦にスクロールしない', `文書 ${c.docH}px / 画面 ${c.cliH}px`);
+      judge(dev.h - c.save.bottom >= 8, '閉のときも保存が画面のいちばん下端に触れていない',
+        `下に ${(dev.h - c.save.bottom).toFixed(0)}px`);
+      // 額の比が崩れていない（max-* に切られると canvas だけが歪む）
+      const ar = 1 * dev.real.split('x')[0] / dev.real.split('x')[1];
+      judge(Math.abs(m.frame.w / m.frame.h - ar) < 0.005 && Math.abs(c.frame.w / c.frame.h - ar) < 0.005,
+        '額の比が端末の比のまま',
+        `開 ${(m.frame.w / m.frame.h).toFixed(4)} / 閉 ${(c.frame.w / c.frame.h).toFixed(4)} / 端末 ${ar.toFixed(4)}`);
+      if (dev.w === 393 && dev.h === 740) {                 // SPEC §7.5 #2 の数値はこの端末で見る
+        judge(c.frame.w >= 250, '393×740 で閉の額が250px幅以上', `${c.frame.w.toFixed(1)}px`);
+        judge(m.frame.w >= 180, '393×740 で開の額が180px幅以上', `${m.frame.w.toFixed(1)}px`);
+      }
+      SIZES.push({ dev: dev.name, open: m.frame.w, closed: c.frame.w, openH: m.frame.h, closedH: c.frame.h });
+      await page.close();
+    }
+
+    /* ---------- 5 引き出し（第6便・SPEC §7.2） ----------
+       開／閉の2つだけ。既定は開。閉のとき帯と階梯は画面から消える。
+       つまみのタップのほか、つまみ・名札の上の**縦スワイプ**でも開閉する
+       （名札はスワイプで開け閉めした回に札を開かないこと＝二役の取り違えを起こさない）。 */
+    console.log('\n【引き出し】');
+    {
+      const page = await browser.newPage();
+      const errors = [];
+      page.on('pageerror', e => errors.push(String(e)));
+      await page.setViewport({ width: 393, height: 740, deviceScaleFactor: 2 });
+      await page.goto(base + '#size=1179x2556', { waitUntil: 'load' });
+      await ready(page);
+      const state = () => page.evaluate(() => {
+        const seen = el => !!(el && el.offsetParent !== null);   // display:none は数えない
+        return {
+          open: document.getElementById('sheet').getAttribute('data-open'),
+          aria: document.getElementById('grip').getAttribute('aria-expanded'),
+          strip: seen(document.getElementById('strip')),
+          depth: seen(document.getElementById('depth')),
+          save: seen(document.getElementById('save')),
+          chooser: seen(document.getElementById('chooser')),
+          picker: document.getElementById('picker').classList.contains('show')
+        };
+      });
+
+      const s0 = await state();
+      judge(s0.open === 'true' && s0.aria === 'true', '既定は開（aria-expanded=true）',
+        `data-open=${s0.open} / aria-expanded=${s0.aria}`);
+      judge(s0.strip && s0.depth, '開のときは帯と階梯が出ている');
+
+      await page.click('#grip');
+      await new Promise(r => setTimeout(r, 400));
+      const s1 = await state();
+      judge(s1.open === 'false' && s1.aria === 'false', 'つまみのタップで閉じる（aria-expanded=false）',
+        `data-open=${s1.open} / aria-expanded=${s1.aria}`);
+      judge(!s1.strip && !s1.depth, '閉のとき帯と階梯が画面から消える',
+        `帯 ${s1.strip} / 階梯 ${s1.depth}`);
+      judge(s1.save && s1.chooser, '閉でも名札と「写真に保存」は出ている');
+
+      await page.click('#grip');
+      await new Promise(r => setTimeout(r, 400));
+      const s2 = await state();
+      judge(s2.open === 'true' && s2.strip && s2.depth, 'もう一度押すと開く');
+
+      // 名札の上を下へなぞる → 閉じる。そのとき札（#picker）は開かない
+      const nf = await page.evaluate(() => {
+        const r = document.getElementById('chooser').getBoundingClientRect();
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      });
+      await page.mouse.move(nf.x, nf.y);
+      await page.mouse.down();
+      await page.mouse.move(nf.x, nf.y + 40, { steps: 6 });
+      await page.mouse.up();
+      await new Promise(r => setTimeout(r, 400));
+      const s3 = await state();
+      judge(s3.open === 'false', '名札の上を下へなぞると閉じる', `data-open=${s3.open}`);
+      judge(!s3.picker, 'なぞった回は札（御霊を選ぶ）を開かない');
+
+      // つまみの上を上へなぞる → 開く
+      const gp = await page.evaluate(() => {
+        const r = document.getElementById('grip').getBoundingClientRect();
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      });
+      await page.mouse.move(gp.x, gp.y);
+      await page.mouse.down();
+      await page.mouse.move(gp.x, gp.y - 40, { steps: 6 });
+      await page.mouse.up();
+      await new Promise(r => setTimeout(r, 400));
+      const s4 = await state();
+      judge(s4.open === 'true', 'つまみの上を上へなぞると開く', `data-open=${s4.open}`);
+
+      // 名札のタップ（なぞらない）はこれまでどおり札を開く
+      await page.click('#chooser');
+      const s5 = await state();
+      judge(s5.picker, '名札をタップすれば札は開く（役は分かれたまま）');
+      judge(errors.length === 0, '例外が出ていない', errors.join(' / '));
+      await page.close();
+    }
+
+    /* ---------- 6 ≡ の札（第6便・SPEC §7.3） ----------
+       #picker と同じ「開いて閉じる札」の型。中身は最初の画面から外した説明ぜんぶ。
+       **#dailyBox・#copyUrl は第3便のまま移しただけ**なので、動くことをここで見る。 */
+    console.log('\n【≡ の札】');
+    {
+      const page = await browser.newPage();
+      const errors = [];
+      page.on('pageerror', e => errors.push(String(e)));
+      await page.setViewport({ width: 393, height: 852, deviceScaleFactor: 2 });
+      // clipboard は差し替えて、書き込みの回数を数える（HTTPS でないと本物は通らない）
+      await page.evaluateOnNewDocument(() => {
+        window.__clip = [];
+        Object.defineProperty(navigator, 'clipboard', {
+          configurable: true,
+          get: () => ({ writeText: t => { window.__clip.push(t); return Promise.resolve(); } })
+        });
+      });
+      await page.goto(base + '#size=1179x2556', { waitUntil: 'load' });
+      await ready(page);
+      const shown = () => page.evaluate(() => document.getElementById('menu').classList.contains('show'));
+
+      await page.click('#menuBtn');
+      judge(await shown(), '≡ を押すと開く');
+      await page.click('#menu-close');
+      judge(!(await shown()), '✕ で閉じる');
+
+      await page.click('#menuBtn');
+      await page.evaluate(() => {
+        const m = document.getElementById('menu');
+        const r = m.getBoundingClientRect();
+        m.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: r.left + 4, clientY: r.top + 4 }));
+      });
+      judge(!(await shown()), '外側タップで閉じる');
+
+      await page.click('#menuBtn');
+      await page.keyboard.press('Escape');
+      judge(!(await shown()), 'Esc で閉じる');
+
+      await page.click('#menuBtn');
+      const inside = await page.evaluate(() => {
+        const body = document.getElementById('menuBody');
+        const has = id => !!body.querySelector('#' + id);
+        return {
+          daily: has('dailyBox'), dailyHidden: document.getElementById('dailyBox').hidden,
+          copy: has('copyUrl'), log: has('log'), howto: has('howtoText'),
+          url: (document.getElementById('dailyUrl').textContent || '').trim(),
+          text: body.textContent.replace(/\s+/g, ''),
+          scrollable: getComputedStyle(document.querySelector('#menu .pick-body')).overflowY
+        };
+      });
+      judge(inside.daily && !inside.dailyHidden, '中に「毎朝ひとりでに替えるなら」がある（寸法が合うとき出る）',
+        `#dailyBox hidden=${inside.dailyHidden}`);
+      judge(inside.url.indexOf('yo-jitate-1179x2556.jpg') > 0, '毎朝の一枚のURLがこの端末の寸法で入る', inside.url);
+      judge(inside.copy, '中に「URLをコピー」がある');
+      judge(inside.log, '中に「この端末で通ったこと」（#log）がある');
+      judge(inside.howto, '中に「壁紙にする手順」がある');
+      judge(inside.text.indexOf('二次創作') >= 0, '脚注に二次創作の明記がある');
+      judge(inside.text.indexOf('原本を配ってはいません') >= 0, '脚注に「原本を配っていない」が残っている');
+      judge(inside.text.indexOf('破線は保存画像には入りません') >= 0, '脚注に破線の但し書きが残っている');
+      judge(inside.scrollable === 'auto', '札の中は縦にスクロールする（.pick-body）', inside.scrollable);
+
+      // #copyUrl が従来どおり動く
+      await page.evaluate(() => { document.getElementById('dailyBox').open = true; });
+      await page.click('#copyUrl');
+      await new Promise(r => setTimeout(r, 200));
+      const cp = await page.evaluate(() => ({
+        n: window.__clip.length, last: window.__clip[window.__clip.length - 1] || '',
+        label: document.getElementById('copyUrl').textContent.trim()
+      }));
+      judge(cp.n === 1 && cp.last.indexOf('yo-jitate-1179x2556.jpg') > 0, '「URLをコピー」がクリップボードへ書く',
+        `${cp.n}回 / ${cp.last}`);
+      judge(cp.label === '写しました', '写したことが釦に出る', cp.label);
+      judge(errors.length === 0, '例外が出ていない', errors.join(' / '));
       await page.close();
     }
 
@@ -576,6 +791,13 @@ async function main() {
   } finally {
     await browser.close();
     await new Promise(r => server.close(r));   // 立てたサーバーはここで閉じる
+  }
+
+  console.log('\n【額の実寸（幅 px）】');
+  console.log('  端末                                 開      閉');
+  for (const z of SIZES) {
+    console.log(`  ${z.dev.padEnd(28, ' ')} ${z.open.toFixed(1).padStart(7)} ${z.closed.toFixed(1).padStart(7)}`
+      + `   （高さ ${z.openH.toFixed(0)} → ${z.closedH.toFixed(0)}）`);
   }
 
   console.log(failures === 0 ? '\n通った。' : `\n落ちた項目が ${failures} 件ある。`);
