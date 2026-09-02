@@ -38,10 +38,11 @@
     overflow:hidden;              /* 第6便: 1画面のアプリ。頁は縦に流れない */
   }
 
-  /* ---- 第6便「額を画面に」の骨（SPEC §7.1） ----
-     額は「画面 − 引き出し」の領域いっぱいに contain で置き、上下左右とも中央。
-     **引き出しは額の上に被せない**——不透明の引き出しでは絵を見ながら選べず、
-     半透明は「とどまる透過」なので採らない（SHITSURAE §1）。だから額のほうを伸び縮みさせる。 */
+  /* ---- 第6便その2「閉じた姿ひとつに」の骨（SPEC §7.7） ----
+     開閉は無くした。**状態はひとつ**。左に顔の縦列・中央に額・右に階梯の縦列を並べ、
+     下の面（--night-2・不透明）には名札と「写真に保存」だけを残す。
+     額は「画面 − 下の面」の高さと「画面 − 左列 − 右列 − 余白」の幅に contain。
+     **引き出しに覆われることが無くなったので、額は常に全部見える。** */
   #app{
     position:fixed;inset:0;
     height:100vh;    /* dvh を知らない端末の保険 */
@@ -50,10 +51,12 @@
   }
   .stage{
     position:relative;flex:1 1 auto;min-height:0;
-    display:flex;align-items:center;justify-content:center;
-    padding:4px 12px;
+    display:flex;align-items:stretch;justify-content:center;gap:8px;
+    padding:4px 8px;
     padding-top:calc(4px + env(safe-area-inset-top));
   }
+  /* 額の器。左右の列を引いた残りが額の取れる幅（JS が実測して px で入れる） */
+  .framewrap{flex:1 1 auto;min-width:0;display:flex;align-items:center;justify-content:center}
 
   /* ≡ ほかの案内。額の袖（左右の余白）に置く。額が画面幅いっぱいになる端末では
      時計の帯の上に乗るが、帯は暗い地なので読める（SPEC §7.1）。 */
@@ -87,7 +90,7 @@
        aspect-ratio も JS が入れるが、CSS の aspect-ratio と max-* の組み合わせは
        端末で丸めが割れるので、決め手は実測のほうにしてある。 */
   }
-  .frame.fit{transition:width 300ms ease,height 300ms ease}   /* 引き出しの開閉に合わせて伸び縮み */
+  .frame.fit{transition:width 300ms ease,height 300ms ease}   /* 端末の向き・背丈が変わったときだけ伸び縮み */
   /* 枠の側で寸法を決める。canvas に max-* を掛けると canvas だけが縮み、
      枠は shrink-to-fit の幅（＝利用可能幅）のまま残ってガイドの破線がはみ出す。 */
   .frame canvas{display:block;width:100%;height:100%}
@@ -135,25 +138,17 @@
     font-family:inherit;-webkit-tap-highlight-color:transparent;cursor:pointer;
   }
 
-  /* ---- 引き出し（bottom sheet・SPEC §7.2） ----
-     状態は開／閉の2つだけ。既定は**開**（0手で選べることを守る）。開閉は記憶しない。
+  /* ---- 下の面（SPEC §7.7） ----
+     **開閉は無い。状態はひとつ。**つまみも縦スワイプも data-open も無くした。
+     中身は 名札 → 保存 → 二次創作の一行 だけ（選ぶ手は左右の列へ出た）。
      地は --night-2・不透明。二色一組（--night と --night-2）はここで保つ。 */
   .sheet{
     flex:none;width:100%;max-width:480px;margin:0 auto;
     background:var(--night-2);
     border-radius:10px 10px 0 0;
     box-shadow:0 -6px 20px rgba(0,0,0,.45);
-    padding:0 12px calc(6px + env(safe-area-inset-bottom));
+    padding:8px 12px calc(6px + env(safe-area-inset-bottom));
   }
-  .grip{
-    display:flex;align-items:center;justify-content:center;
-    width:100%;height:44px;padding:0;
-    border:none;background:transparent;
-    touch-action:none;              /* つまみの上の縦スワイプは頁ではなく引き出しが取る */
-  }
-  .grip .bar{display:block;width:44px;height:4px;border-radius:4px;background:var(--line)}
-  .sheet[data-open="false"] .grip .bar{background:rgba(217,169,76,.45)}
-  .sheet[data-open="false"] .sheet-body{display:none}   /* 閉のとき帯と階梯は画面から消える */
 
   .save{
     display:block;width:100%;min-height:48px;margin-top:10px;
@@ -170,15 +165,13 @@
     font-family:system-ui,sans-serif;text-align:center;
   }
 
-  /* 名札。額と帯のあいだに1行だけ。押すと「開いて閉じる札」が開く（SHITSURAE §7・既にある型を使う）。
-     **帯＝隣を流し見る／札＝名前で飛ぶ**、と役を分けている。
-     つまみと同じく、この上の縦スワイプでも引き出しが開け閉めできる。 */
+  /* 名札。下の面の一行目。押すと「開いて閉じる札」が開く（SHITSURAE §7・既にある型を使う）。
+     **帯＝隣を流し見る／札＝名前で飛ぶ**、と役を分けている。 */
   .chooser{
     display:flex;align-items:center;gap:8px;width:100%;
     min-height:44px;padding:6px 12px;
     border-radius:5px;border:1px solid var(--line);
     background:var(--night);color:var(--ink);text-align:left;
-    touch-action:none;
   }
   .chooser:active{background:var(--night-2)}
   .chooser .nm{font-size:15px;color:var(--ink);white-space:nowrap;flex:none}
@@ -188,24 +181,23 @@
   }
   .chooser .arrow{font-size:12px;color:var(--kindei);flex:none;font-family:system-ui,sans-serif}
 
-  /* 顔の帯。29柱を横に流し見る（最初の画面に顔がいる、が第5便の芯）。
-     里の境に隙間をひとつ入れて、並びが甲賀→伊賀→雑賀→風魔→根の国 であることを見せる。
+  /* 顔の列（左）。第6便その2で横の帯から**縦の列**にした。29柱を縦に流し見る。
+     ≡（左上44px）の下から、下の面の上まで。里の境に隙間をひとつ入れて、
+     並びが甲賀→伊賀→雑賀→風魔→根の国 であることを見せる。
      <img> にJSのクリックを付けず <button> で包む（SHITSURAE §2）。
      選んだ印は金泥の面。輪では出さない——円の光り物は蝕環ひとつだけの決まりがある。 */
   .strip{
-    display:flex;gap:2px;margin-top:8px;
-    /* 面の縁まで流す（左右の余白ぶん食い込ませ、その幅を内側の余白で返す）。
-       幅375pxでちょうど5柱で切れると、**続きがあることが見えない**（SEで実測）。 */
-    margin-left:-12px;margin-right:-12px;padding:0 12px 2px;
-    overflow-x:auto;overflow-y:hidden;
-    scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;
+    flex:none;width:62px;margin-top:44px;
+    display:flex;flex-direction:column;gap:2px;
+    overflow-y:auto;overflow-x:hidden;      /* 横には出さない（列の幅で切る） */
+    scroll-snap-type:y proximity;-webkit-overflow-scrolling:touch;
     scrollbar-width:none;
   }
   .strip::-webkit-scrollbar{display:none}
   .strip button{
     flex:none;scroll-snap-align:center;
     display:flex;flex-direction:column;align-items:center;gap:1px;
-    width:62px;min-height:44px;padding:3px 2px 4px;
+    width:100%;min-height:44px;padding:3px 2px 4px;
     border:1px solid transparent;border-radius:4px;
     background:transparent;color:var(--ink-dim);
   }
@@ -217,22 +209,29 @@
   .strip button[aria-pressed="true"]{
     background:rgba(217,169,76,.16);border-color:rgba(217,169,76,.45);color:var(--kindei-hi);
   }
-  .strip .sato-gap{flex:none;width:6px}
+  .strip .sato-gap{flex:none;height:6px}
 
-  /* 顕れの深さ。10段の階梯（御霊おとしの階梯と同じ形）。
-     見た目は「**選んだ段まで金泥が満ちる**」——段ごとに濃くし、選んだ段だけ明るい金泥にする。
+  /* 顕れの深さの階梯（右）。第6便その2で横から**縦**にした。
+     **下が01・上が10。選んだ段まで下から金泥が満ちる**——DOM の順は 1→10 のままで、
+     `flex-direction:column-reverse` で並びだけを返している（読み上げの順を壊さない）。
      数字は選んだ段にだけ出す（読む文字を1つに絞る。他の段は aria-label が読む）。
-     幅390pxで44px×10は入らないため、押し所は24pxを床にして詰める（SHITSURAE §2）。
-     第6便で頁が流れなくなったので touch-action:none に戻した（縦送りに返す理由が消えた）。
-     縦送りに化けたときの cancelDrag は残してある。 */
-  .depth-head{
-    margin:8px 0 4px;font-size:12px;line-height:1.4;color:var(--ink-dim);
-    font-family:system-ui,sans-serif;text-align:left;letter-spacing:.06em;
+     押し所は24pxを床にする（SHITSURAE §2）。段の背は列の高さ÷10。
+     頁が流れないので touch-action:none。縦送りに化けたときの cancelDrag は残してある。 */
+  .depthcol{
+    flex:none;width:36px;margin-top:44px;
+    display:flex;flex-direction:column;align-items:stretch;
   }
-  .depth-head b{color:var(--kindei);font-weight:400}
-  .depth{display:flex;gap:3px;touch-action:none;user-select:none;-webkit-user-select:none}
+  .depth-cap{
+    flex:none;margin:0 0 4px;font-size:12px;line-height:1.2;text-align:center;
+    color:var(--ink-dim);font-family:system-ui,sans-serif;letter-spacing:.06em;
+  }
+  .depth{
+    flex:1 1 auto;min-height:0;
+    display:flex;flex-direction:column-reverse;gap:3px;
+    touch-action:none;user-select:none;-webkit-user-select:none;
+  }
   .depth button{
-    flex:1;min-width:24px;min-height:40px;padding:0;
+    flex:1 1 0;min-width:24px;min-height:24px;padding:0;
     border-radius:5px;border:1px solid var(--line);
     background:var(--night);color:var(--ink-dim);
     font-family:system-ui,sans-serif;font-size:12px;letter-spacing:.02em;
@@ -348,9 +347,8 @@
   /* 背の低い画面では縦の余白だけを詰める。横の幅指定は壊さない（SHITSURAE §6）。
      第6便では額が「画面 − 引き出し」を取るので、詰めたぶんがそのまま額の大きさになる。 */
   @media (max-height:700px){
-    .stage{padding:2px 10px}
-    .strip{margin-top:6px}
-    .depth-head{margin:6px 0 3px}
+    .stage{padding:2px 6px}
+    .sheet{padding-top:6px}
     .save{margin-top:8px}
     .credit{margin-top:4px}
   }
@@ -358,40 +356,42 @@
 </head>
 <body class="veiled locked">
 
-<!-- 第6便「額を画面に」。1画面のアプリ。頁は縦にスクロールしない（SPEC §7.1） -->
+<!-- 第6便その2「閉じた姿ひとつに」。1画面のアプリ・状態はひとつ（SPEC §7.7） -->
 <div id="app">
 
   <div class="stage" id="stage">
-    <!-- 額の袖（左右の余白）に置く。額が画面幅いっぱいの端末では時計の帯の上に乗る -->
+    <!-- 左上。左の列はこの下から始まる -->
     <button class="menubtn rise" id="menuBtn" aria-label="ほかの案内" aria-haspopup="dialog">≡</button>
 
-    <div class="frame" id="frame">
-      <canvas id="cv"></canvas>
-      <!-- 題字は額の時計の帯の中に常設。開幕の「題の顕れ」は同じ場所で大→小 -->
-      <h1 class="rise">夜じたて</h1>
-      <div class="daimei" id="daimei" aria-hidden="true">夜じたて</div>
-      <div class="guide top rise"><span>時計の帯</span></div>
-      <div class="guide bottom rise"><span>釦の帯</span></div>
-      <div class="waiting">顕れています…</div>
+    <!-- 左の列: 顔（29柱を縦に流し見る） -->
+    <div class="strip rise" id="strip" role="group" aria-label="御霊を選ぶ"></div>
+
+    <div class="framewrap" id="framewrap">
+      <div class="frame" id="frame">
+        <canvas id="cv"></canvas>
+        <!-- 題字は額の時計の帯の中に常設。開幕の「題の顕れ」は同じ場所で大→小 -->
+        <h1 class="rise">夜じたて</h1>
+        <div class="daimei" id="daimei" aria-hidden="true">夜じたて</div>
+        <div class="guide top rise"><span>時計の帯</span></div>
+        <div class="guide bottom rise"><span>釦の帯</span></div>
+        <div class="waiting">顕れています…</div>
+      </div>
+    </div>
+
+    <!-- 右の列: 顕れの深さの階梯（下が01・上が10。選んだ段まで下から満ちる） -->
+    <div class="depthcol rise">
+      <span class="depth-cap">深さ</span>
+      <div class="depth" id="depth" role="group" aria-label="顕れの深さ"></div>
     </div>
   </div>
 
-  <!-- 引き出し。既定は開。閉じると額が大きくなる（額の上には被せない） -->
-  <div class="sheet rise" id="sheet" data-open="true">
-    <button class="grip" id="grip" aria-expanded="true" aria-controls="sheetBody"
-            aria-label="選ぶところを閉じる"><span class="bar"></span></button>
-
+  <!-- 下の面。開閉は無い（状態はひとつ）。名札 → 保存 → 二次創作の一行 -->
+  <div class="sheet rise" id="sheet">
     <button class="chooser" id="chooser" aria-haspopup="dialog">
       <span class="nm" id="chooserName">—</span>
       <span class="tg" id="chooserTag"></span>
       <span class="arrow">名前で選ぶ ▾</span>
     </button>
-
-    <div class="sheet-body" id="sheetBody">
-      <div class="strip" id="strip" role="group" aria-label="御霊を選ぶ"></div>
-      <p class="depth-head"><b>顕れの深さ</b>　<span id="depthNum">05</span>／10</p>
-      <div class="depth" id="depth" role="group" aria-label="顕れの深さ"></div>
-    </div>
 
     <button id="save" class="save" disabled>写真に保存</button>
     <p class="credit">月蝕綺譚の二次創作です。公式とは関係ありません</p>
@@ -655,17 +655,16 @@
   var ctx = cv.getContext('2d');
   frameEl.style.aspectRatio = W + ' / ' + H;
 
-  /* ---------- ①-b 額を「画面 − 引き出し」に contain で収める（第6便・SPEC §7.1） ----------
-     引き出しの開閉で領域が変わったら、額が伸び縮みする（CSS で 300ms）。
-     **引き出しを額の上に被せない**ので、額は常に全部見える。
+  /* ---------- ①-b 額を中央の列に contain で収める（第6便その2・SPEC §7.7） ----------
+     幅は「画面 − 左列 − 右列 − 余白」＝ .framewrap の実寸、高さは「画面 − 下の面」。
+     **開閉が無くなったので、額は常にこの寸法のまま**（伸び縮みするのは向きや背丈が変わったときだけ）。
      CSS の aspect-ratio ＋ max-width/max-height の組み合わせは端末で丸めが割れるため、
      決め手は実測にして px で入れる（aspect-ratio は保険として残してある）。 */
-  var stageEl = document.getElementById('stage');
+  var wrapEl  = document.getElementById('framewrap');
   var sheetEl = document.getElementById('sheet');
   function fitFrame(){
-    var cs = getComputedStyle(stageEl);
-    var availW = stageEl.clientWidth  - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-    var availH = stageEl.clientHeight - parseFloat(cs.paddingTop)  - parseFloat(cs.paddingBottom);
+    var availW = wrapEl.clientWidth;
+    var availH = wrapEl.clientHeight;
     if (!(availW > 0) || !(availH > 0)) return;
     var w = Math.min(availW, availH * (W / H));
     frameEl.style.width  = w + 'px';
@@ -674,46 +673,16 @@
   fitFrame();
   addEventListener('resize', fitFrame);
   addEventListener('orientationchange', fitFrame);
-  /* 引き出しの背丈は中身（帯・階梯）が組み上がるまで確定しない。
-     **ここで一度測っただけでは、まだ空の引き出しの寸法で額を決めてしまう**ので、
-     引き出しの背丈が動いたら測り直す。額の側は引き出しの背丈を変えないので回らない。 */
-  if (window.ResizeObserver) new ResizeObserver(fitFrame).observe(sheetEl);
-
-  /* ---------- ①-c 引き出し（開／閉の2つだけ・既定は開・記憶しない。SPEC §7.2） ---------- */
-  var gripEl  = document.getElementById('grip');
-  function sheetOpen(){ return sheetEl.getAttribute('data-open') === 'true'; }
-  function setSheet(open){
-    open = !!open;
-    if (sheetOpen() === open) return;
-    sheetEl.setAttribute('data-open', open ? 'true' : 'false');
-    gripEl.setAttribute('aria-expanded', open ? 'true' : 'false');
-    gripEl.setAttribute('aria-label', open ? '選ぶところを閉じる' : '選ぶところを開く');
-    fitFrame();                     // 領域が変わったので額を測り直す
-    if (open) centerStrip();        // 開いたら選んでいる柱をまた真ん中へ
+  /* 下の面の背丈は名札の中身が入るまで、左右の列の背丈は組み上がるまで確定しない。
+     **ここで一度測っただけでは、まだ空の器の寸法で額を決めてしまう**（第6便で踏んだ）ので、
+     背丈が動く相手（下の面・左右の列）を見張って測り直す。
+     額の側はこの3つの寸法を変えないので回らない。 */
+  if (window.ResizeObserver) {
+    var ro = new ResizeObserver(fitFrame);
+    ro.observe(sheetEl);
+    ro.observe(document.getElementById('strip'));
+    ro.observe(document.querySelector('.depthcol'));
   }
-
-  /* つまみ・名札の上での縦スワイプでも開閉する（上＝開・下＝閉）。
-     縦に動いた回は、そのあとの click を出さない（名札だと札が開いてしまうため）。 */
-  var swY = 0, swOn = false, swFired = false;
-  function swStart(e){ swOn = true; swFired = false; swY = e.clientY; }
-  function swMove(e){
-    if (!swOn) return;
-    var dy = e.clientY - swY;
-    if (dy <= -20)      { swOn = false; swFired = true; setSheet(true); }
-    else if (dy >= 20)  { swOn = false; swFired = true; setSheet(false); }
-  }
-  function swEnd(){ swOn = false; }
-  function swTook(){ if (!swFired) return false; swFired = false; return true; }
-  [gripEl, document.getElementById('chooser')].forEach(function(el){
-    el.addEventListener('pointerdown', swStart);
-    el.addEventListener('pointermove', swMove);
-    el.addEventListener('pointerup', swEnd);
-    el.addEventListener('pointercancel', swEnd);
-  });
-  gripEl.addEventListener('click', function(){
-    if (swTook()) return;
-    setSheet(!sheetOpen());
-  });
 
   /* ---------- ①-d ≡ の札（#picker と同じ「開いて閉じる札」の型。SPEC §7.3） ---------- */
   var menu = document.getElementById('menu');
@@ -787,15 +756,12 @@
     if (b) b.scrollIntoView({block:'center'});
   }
   function closePicker(){ picker.classList.remove('show'); }
-  document.getElementById('chooser').addEventListener('click', function(){
-    if (swTook()) return;       // 縦スワイプで引き出しを開け閉めした回は札を開かない
-    openPicker();
-  });
+  document.getElementById('chooser').addEventListener('click', openPicker);
   document.getElementById('pick-close').addEventListener('click', closePicker);
   picker.addEventListener('click', function(e){ if (e.target === picker) closePicker(); });
 
-  /* ---------- ②-b 顔の帯（最初の画面に29柱の顔を出す） ----------
-     札（#picker）は名前で飛ぶ用、帯は隣を流し見る用。役を分けて両方残す。 */
+  /* ---------- ②-b 顔の列（最初の画面に29柱の顔を出す・第6便その2で縦にした） ----------
+     札（#picker）は名前で飛ぶ用、列は隣を流し見る用。役を分けて両方残す。 */
   var stripEl = document.getElementById('strip');
   var stripButtons = {};
   (function buildStrip(){
@@ -831,18 +797,17 @@
     });
   })();
 
-  // 帯は選んだ柱を中央へ寄せる。block:'nearest' で頁のほうを縦に動かさない
+  // 列は選んだ柱を縦の中央へ寄せる（第6便その2）。頁は流れないので block:'center' で足りる
   function centerStrip(){
     var b = stripButtons[curId];
     if (!b || !b.scrollIntoView) return;
-    if (!stripEl.clientWidth) return;   // 引き出しが閉じている（display:none）ときは測れない
-    try { b.scrollIntoView({block:'nearest', inline:'center'}); }
-    catch(e) { stripEl.scrollLeft = b.offsetLeft - (stripEl.clientWidth - b.offsetWidth) / 2; }
+    if (!stripEl.clientHeight) return;
+    try { b.scrollIntoView({block:'center', inline:'nearest'}); }
+    catch(e) { stripEl.scrollTop = b.offsetTop - (stripEl.clientHeight - b.offsetHeight) / 2; }
   }
 
   /* ---------- ③ 顕れの深さの階梯 ---------- */
   var depthEl = document.getElementById('depth');
-  var depthNum = document.getElementById('depthNum');
   var depthButtons = [];
   for (var d = 1; d <= 10; d++) {
     (function(depth){
@@ -856,8 +821,8 @@
     })(d);
   }
 
-  // 「選んだ段まで金泥が満ちる」。段ごとに濃くし、選んだ段だけ明るい金泥にする。
-  // 上の段は地のまま。数字は選んだ段にだけ出す。
+  // 「選んだ段まで**下から**金泥が満ちる」。段ごとに濃くし、選んだ段だけ明るい金泥にする。
+  // 上の段は地のまま。数字は選んだ段にだけ出す（見出しの「05／10」は第6便その2で消した）。
   function paintDepth(sel){
     depthButtons.forEach(function(b, i){
       var n = i + 1;
@@ -879,19 +844,19 @@
         }
       }
     });
-    if (depthNum) depthNum.textContent = String(sel).padStart(2, '0');
   }
 
   /* なぞって選ぶ。指の下の段を追うが、**読み込むのは指を離した時か150ms止まった時に1回**。
      なぞっている間に読みにいくと、10段ぶんの札絵を無駄に取りにいくことになる。
      一段ごとの click も残す（機械（check-layout / check-frame / daily.js）はこちらを押す）。 */
   var dragOn = false, dragDepth = 0, holdT = 0;
-  function depthAt(x){
+  // 第6便その2で階梯が縦になったので、段は clientY で取る（並びは column-reverse ＝ 下が01）
+  function depthAt(y){
     var best = 1, bestD = Infinity;
     for (var i = 0; i < depthButtons.length; i++) {
       var r = depthButtons[i].getBoundingClientRect();
-      if (x >= r.left && x <= r.right) return i + 1;
-      var dd = x < r.left ? r.left - x : x - r.right;
+      if (y >= r.top && y <= r.bottom) return i + 1;
+      var dd = y < r.top ? r.top - y : y - r.bottom;
       if (dd < bestD) { bestD = dd; best = i + 1; }
     }
     return best;
@@ -903,14 +868,14 @@
   depthEl.addEventListener('pointerdown', function(e){
     if (e.button != null && e.button > 0) return;
     dragOn = true;
-    dragDepth = depthAt(e.clientX);
+    dragDepth = depthAt(e.clientY);
     try { depthEl.setPointerCapture(e.pointerId); } catch(err) {}
     paintDepth(dragDepth);        // なぞり中は印と数字だけ動かす
     holdLater(dragDepth);
   });
   depthEl.addEventListener('pointermove', function(e){
     if (!dragOn) return;
-    var dp = depthAt(e.clientX);
+    var dp = depthAt(e.clientY);
     if (dp === dragDepth) return;
     dragDepth = dp;
     paintDepth(dp);

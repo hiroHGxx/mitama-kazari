@@ -3,22 +3,23 @@
  *   NODE_PATH=../shikifuda-kasane/node_modules node scripts/check-layout.js
  *   （puppeteer-core は既存作から借りる。この作品には入れない）
  *
- * 見るもの:
- *   1 額が全部見える（第6便）      上端が画面内・下端が引き出しの上端より上・左右が画面内
- *   2 額の実寸（第6便）            393×740 で 閉 ≥250px 幅・開 ≥180px 幅／**閉じると額が大きくなる**
+ * 見るもの（第6便その2「閉じた姿ひとつに」＝ SPEC §7.7 の受け入れ表）:
+ *   1 額が全部見える（第6便）      上端が画面内・下端が下の面の上端より上・左右が画面内
+ *   2 額の実寸（§7.7 #1）         393×740 で **幅 ≥240px**（第6便の閉 256 と同等）。比が歪んでいない
  *   3 保存が画面内で最下端に触れない 第0便で画面外へ出た。ホームバーに飲まれないことも見る
  *   4 頁が縦にスクロールしない（第6便） 1画面のアプリなので scrollHeight ≦ clientHeight
- *   5 引き出し（第6便）            つまみで開閉・aria-expanded が変わる・閉のとき帯と階梯が消える・
- *                                  つまみと名札の縦スワイプでも開閉する（そのとき札は開かない）
+ *   5 下の面（§7.7 #4）           **状態がひとつ**＝つまみ・data-open・aria-expanded が無い。
+ *                                  名札・保存・一行が常に出ていて、左右の列も常に出ている
  *   6 ≡ の札（第6便）              開く・✕・外側・Esc／中に #dailyBox・#copyUrl・#log・二次創作の明記／
  *                                  #copyUrl が従来どおり動く（clipboard を差し替えて書き込みを数える）
- *   7 押し所の実寸と文字の大きさ    ≡・つまみ・名札・帯は44px／階梯は24px／12pxの床（SHITSURAE §2 §3）
+ *   7 押し所の実寸と文字の大きさ    ≡・名札・顔の列は44px／階梯は24px／12pxの床（SHITSURAE §2 §3）
  *   8 顔アイコン29柱が全部出る      素材蔵ではなく canon 側の別ホストから来る
  *   9 札絵が4系統ぜんぶ読める        /fuda/ /fuda/v2/ /fuda/v3/ /fuda/app/ と _v2 _v3 のファイル名変種
  *  10 選び直しても canvas が汚れない  crossOrigin が効いていないと toBlob が落ちる
  *  11 連打しても最後の一枚に落ち着く  古い読み込みが後から返って上書きしないこと
- *  12 顔の帯（第5便）              29柱・顔が全部出る・押し所44px以上・帯で選べる
- *  13 深さをなぞって選べる（第5便）  読み込みは離した時に1回だけ
+ *  12 顔の列（§7.7 #2）           29柱・顔が全部出る・押し所44px以上・**縦に送れる・横にはみ出さない**
+ *  13 深さの階梯（§7.7 #3）        10段・**01が下**・選んだ段まで満ちる・数字は1つ・**縦になぞれる**・
+ *                                  なぞり1回の読み込みは1回
  *  14 開幕「顕れ」の時間割（第5便）  1200ms前は押せない／1260ms以降押せる／タップで飛ばせる／
  *                                  **絵の顕れが終わってから保存が有効になる**
  *
@@ -40,7 +41,7 @@ const ROOT = path.join(__dirname, '..');
 const HTML = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 
 let failures = 0;
-const SIZES = [];   // 額の実寸（端末 × 開／閉）。最後に表で出す
+const SIZES = [];   // 額の実寸（端末ごと）。最後に表で出す
 /* 開幕が終わる（＝押せるようになる）まで待つ。第5便から 1260ms は誰も押せない。
    **指と同じ関門を通す**ため、待たずに叩く検査を書かない
    （待たずに page.click すると pointer-events:none をすり抜けて別の要素を叩き、
@@ -85,6 +86,7 @@ async function main() {
         const box = el => { const b = r(el); return { top: b.top, bottom: b.bottom, left: b.left, right: b.right, w: b.width, h: b.height }; };
         const depth = [...document.querySelectorAll('#depth button')];
         const strip = [...document.querySelectorAll('#strip button')];
+        const stripEl = document.getElementById('strip');
         const sizes = [...document.querySelectorAll('body *')]
           .filter(el => el.children.length === 0 && el.textContent.trim())
           .map(el => ({ t: el.textContent.trim().slice(0, 12), px: parseFloat(getComputedStyle(el).fontSize) }));
@@ -93,12 +95,23 @@ async function main() {
           frame: box(document.getElementById('frame')),
           sheet: box(document.getElementById('sheet')),
           menuBtn: box(document.getElementById('menuBtn')),
-          grip: box(document.getElementById('grip')),
           chooser: box(document.getElementById('chooser')),
+          strip: box(stripEl),
+          depthCol: box(document.querySelector('.depthcol')),
           stripMin: strip.length ? Math.min(...strip.map(b => Math.min(r(b).width, r(b).height))) : -1,
+          stripScrollH: stripEl.scrollHeight, stripClientH: stripEl.clientHeight,
+          stripScrollW: stripEl.scrollWidth, stripClientW: stripEl.clientWidth,
           depthMin: depth.length ? Math.min(...depth.map(b => Math.min(r(b).width, r(b).height))) : -1,
+          depthStepH: depth.length ? Math.min(...depth.map(b => r(b).height)) : -1,
+          depthListH: r(document.getElementById('depth')).height,
+          // 01 が下・10 が上（DOM の順は 1→10 のまま。並びだけ column-reverse で返している）
+          depthTop1: depth.length ? r(depth[0]).top : -1,
+          depthTop10: depth.length ? r(depth[9]).top : -1,
           depthCount: depth.length,
-          open: document.getElementById('sheet').getAttribute('data-open'),
+          // 状態はひとつ（第6便その2）。つまみ・data-open・aria-expanded はもう無い
+          grip: !!document.getElementById('grip'),
+          dataOpen: document.querySelectorAll('[data-open]').length,
+          ariaExpanded: document.querySelectorAll('[aria-expanded]').length,
           docH: document.documentElement.scrollHeight,
           cliH: document.documentElement.clientHeight,
           bodyH: document.body.scrollHeight,
@@ -109,11 +122,17 @@ async function main() {
       const m = await shot();
       const side = b => Math.min(b.w, b.h);
 
-      // 1 額が全部見える（引き出しに覆われない・画面から出ない）
+      // 1 額が全部見える（下の面に覆われない・左右の列に食い込まれない・画面から出ない）
       judge(m.frame.top >= -0.5 && m.frame.bottom <= m.sheet.top + 0.5
             && m.frame.left >= -0.5 && m.frame.right <= dev.w + 0.5,
-        '額が全部見える（引き出しに覆われない）',
-        `額 上${m.frame.top.toFixed(0)} 下${m.frame.bottom.toFixed(0)} / 引き出しの上端 ${m.sheet.top.toFixed(0)} / 左${m.frame.left.toFixed(0)} 右${m.frame.right.toFixed(0)}`);
+        '額が全部見える（下の面に覆われない）',
+        `額 上${m.frame.top.toFixed(0)} 下${m.frame.bottom.toFixed(0)} / 下の面の上端 ${m.sheet.top.toFixed(0)} / 左${m.frame.left.toFixed(0)} 右${m.frame.right.toFixed(0)}`);
+      judge(m.frame.left >= m.strip.right - 0.5 && m.frame.right <= m.depthCol.left + 0.5,
+        '額が左右の列と重なっていない',
+        `左列の右端 ${m.strip.right.toFixed(0)} / 額 ${m.frame.left.toFixed(0)}〜${m.frame.right.toFixed(0)} / 右列の左端 ${m.depthCol.left.toFixed(0)}`);
+      judge(m.frame.left - m.strip.right >= 7.5 && m.depthCol.left - m.frame.right >= 7.5,
+        '左右の列と額の間が8px以上',
+        `左 ${(m.frame.left - m.strip.right).toFixed(1)}px / 右 ${(m.depthCol.left - m.frame.right).toFixed(1)}px`);
       // 3 保存が画面内で、いちばん下端に触れていない（ホームバーに飲まれる。SHITSURAE 末尾）
       judge(m.save.bottom <= dev.h, '「写真に保存」が画面内にある',
         `下端 ${m.save.bottom.toFixed(0)}px / 画面 ${dev.h}px（余り ${(dev.h - m.save.bottom).toFixed(0)}px）`);
@@ -123,50 +142,52 @@ async function main() {
       judge(m.docH <= m.cliH + 1 && m.bodyH <= m.cliH + 1, '頁が縦にスクロールしない',
         `文書 ${m.docH}px / body ${m.bodyH}px / 画面 ${m.cliH}px`);
       // 7 押し所と文字
-      judge(m.depthCount === 10, '深さの帯が10段', `${m.depthCount}段`);
+      judge(m.depthCount === 10, '深さの階梯が10段', `${m.depthCount}段`);
       judge(m.depthMin >= 24, '深さの押し所が24px以上', `最小 ${m.depthMin.toFixed(1)}px`);
       judge(side(m.menuBtn) >= 44, '≡（ほかの案内）が44px以上',
         `${m.menuBtn.w.toFixed(0)}×${m.menuBtn.h.toFixed(0)}px`);
-      judge(side(m.grip) >= 44, '引き出しのつまみが44px以上',
-        `${m.grip.w.toFixed(0)}×${m.grip.h.toFixed(0)}px`);
       judge(side(m.chooser) >= 44, '御霊を選ぶ入口（名札）が44px以上',
         `${m.chooser.w.toFixed(0)}×${m.chooser.h.toFixed(0)}px`);
-      judge(m.stripMin >= 44, '帯の押し所が44px以上', `最小 ${m.stripMin.toFixed(1)}px`);
+      judge(m.stripMin >= 44, '顔の列の押し所が44px以上', `最小 ${m.stripMin.toFixed(1)}px`);
       judge(m.smallest.px >= 12, '12px未満の文字が無い', `最小 ${m.smallest.px}px「${m.smallest.t}」`);
       judge(errors.length === 0, '例外が出ていない', errors.join(' / '));
 
-      // 2 額の実寸。引き出しを閉じると額が大きくなる
-      judge(m.open === 'true', '引き出しの既定は開', `data-open=${m.open}`);
-      await page.click('#grip');
-      await new Promise(r => setTimeout(r, 500));           // 伸び縮み（300ms）が終わるまで待つ
-      const c = await shot();
-      judge(c.open === 'false', 'つまみを押すと閉じる', `data-open=${c.open}`);
-      judge(c.frame.w > m.frame.w + 1, '閉じると額が大きくなる',
-        `開 ${m.frame.w.toFixed(0)}px 幅 → 閉 ${c.frame.w.toFixed(0)}px 幅`);
-      judge(c.frame.top >= -0.5 && c.frame.bottom <= c.sheet.top + 0.5,
-        '閉のときも額が全部見える',
-        `額 上${c.frame.top.toFixed(0)} 下${c.frame.bottom.toFixed(0)} / 引き出しの上端 ${c.sheet.top.toFixed(0)}`);
-      judge(c.docH <= c.cliH + 1, '閉のときも頁が縦にスクロールしない', `文書 ${c.docH}px / 画面 ${c.cliH}px`);
-      judge(dev.h - c.save.bottom >= 8, '閉のときも保存が画面のいちばん下端に触れていない',
-        `下に ${(dev.h - c.save.bottom).toFixed(0)}px`);
-      // 額の比が崩れていない（max-* に切られると canvas だけが歪む）
+      // 5 状態はひとつ（つまみ・data-open・aria-expanded が無い。SPEC §7.7 #4）
+      judge(!m.grip && m.dataOpen === 0 && m.ariaExpanded === 0, '開閉の仕掛けが無い（状態はひとつ）',
+        `つまみ ${m.grip} / data-open ${m.dataOpen}件 / aria-expanded ${m.ariaExpanded}件`);
+
+      // 左の列: ≡ の下から下の面の上まで／縦に送れて横にはみ出さない（SPEC §7.7 #2）
+      judge(m.strip.top >= m.menuBtn.bottom - 0.5 && m.strip.bottom <= m.sheet.top + 0.5,
+        '左の列が ≡ の下から下の面の上までにある',
+        `≡ の下端 ${m.menuBtn.bottom.toFixed(0)} / 列 ${m.strip.top.toFixed(0)}〜${m.strip.bottom.toFixed(0)} / 下の面 ${m.sheet.top.toFixed(0)}`);
+      judge(m.stripScrollH > m.stripClientH, '左の列は縦に送れる',
+        `中身 ${m.stripScrollH}px / 見えている ${m.stripClientH}px`);
+      judge(m.stripScrollW <= m.stripClientW + 1, '左の列は横にはみ出さない',
+        `中身 ${m.stripScrollW}px / 列 ${m.stripClientW}px`);
+      // 右の列: 幅36px以上・各段は列の高さ÷10（最低24px）・01 が下（SPEC §7.7 #3）
+      judge(m.depthCol.w >= 36, '右の列が36px幅以上', `${m.depthCol.w.toFixed(1)}px`);
+      judge(m.depthStepH >= 24 && m.depthStepH >= m.depthListH / 10 - 4,
+        '各段の背が列の高さ÷10（最低24px）',
+        `段 ${m.depthStepH.toFixed(1)}px / 列 ${m.depthListH.toFixed(0)}px ÷10 = ${(m.depthListH / 10).toFixed(1)}px`);
+      judge(m.depthTop1 > m.depthTop10, '01 が下・10 が上',
+        `01 の上端 ${m.depthTop1.toFixed(0)} / 10 の上端 ${m.depthTop10.toFixed(0)}`);
+
+      // 2 額の実寸と比（max-* に切られると canvas だけが黙って歪む）
       const ar = 1 * dev.real.split('x')[0] / dev.real.split('x')[1];
-      judge(Math.abs(m.frame.w / m.frame.h - ar) < 0.005 && Math.abs(c.frame.w / c.frame.h - ar) < 0.005,
-        '額の比が端末の比のまま',
-        `開 ${(m.frame.w / m.frame.h).toFixed(4)} / 閉 ${(c.frame.w / c.frame.h).toFixed(4)} / 端末 ${ar.toFixed(4)}`);
-      if (dev.w === 393 && dev.h === 740) {                 // SPEC §7.5 #2 の数値はこの端末で見る
-        judge(c.frame.w >= 250, '393×740 で閉の額が250px幅以上', `${c.frame.w.toFixed(1)}px`);
-        judge(m.frame.w >= 180, '393×740 で開の額が180px幅以上', `${m.frame.w.toFixed(1)}px`);
+      judge(Math.abs(m.frame.w / m.frame.h - ar) < 0.005, '額の比が端末の比のまま',
+        `${(m.frame.w / m.frame.h).toFixed(4)} / 端末 ${ar.toFixed(4)}`);
+      if (dev.w === 393 && dev.h === 740) {                 // SPEC §7.7 #1 の数値はこの端末で見る
+        judge(m.frame.w >= 240, '393×740 で額が240px幅以上', `${m.frame.w.toFixed(1)}px`);
       }
-      SIZES.push({ dev: dev.name, open: m.frame.w, closed: c.frame.w, openH: m.frame.h, closedH: c.frame.h });
+      SIZES.push({ dev: dev.name, w: m.frame.w, h: m.frame.h, depthStep: m.depthStepH });
       await page.close();
     }
 
-    /* ---------- 5 引き出し（第6便・SPEC §7.2） ----------
-       開／閉の2つだけ。既定は開。閉のとき帯と階梯は画面から消える。
-       つまみのタップのほか、つまみ・名札の上の**縦スワイプ**でも開閉する
-       （名札はスワイプで開け閉めした回に札を開かないこと＝二役の取り違えを起こさない）。 */
-    console.log('\n【引き出し】');
+    /* ---------- 5 下の面（第6便その2・SPEC §7.7） ----------
+       **開閉が無い。状態はひとつ。**つまみ・data-open・aria-expanded は消えた。
+       下の面は 名札 → 保存 → 一行 だけで、選ぶ手（顔の列・階梯）は常に画面に出ている。
+       名札のタップは従来どおり札を開く（スワイプで開け閉めしていた二役は無くなった）。 */
+    console.log('\n【下の面】');
     {
       const page = await browser.newPage();
       const errors = [];
@@ -177,36 +198,42 @@ async function main() {
       const state = () => page.evaluate(() => {
         const seen = el => !!(el && el.offsetParent !== null);   // display:none は数えない
         return {
-          open: document.getElementById('sheet').getAttribute('data-open'),
-          aria: document.getElementById('grip').getAttribute('aria-expanded'),
+          grip: !!document.getElementById('grip'),
+          sheetBody: !!document.getElementById('sheetBody'),
+          dataOpen: document.querySelectorAll('[data-open]').length,
+          ariaExpanded: document.querySelectorAll('[aria-expanded]').length,
+          depthHead: !!document.querySelector('.depth-head'),
+          cap: (document.querySelector('.depth-cap') || {}).textContent || '',
+          capPx: document.querySelector('.depth-cap')
+            ? parseFloat(getComputedStyle(document.querySelector('.depth-cap')).fontSize) : -1,
           strip: seen(document.getElementById('strip')),
           depth: seen(document.getElementById('depth')),
           save: seen(document.getElementById('save')),
           chooser: seen(document.getElementById('chooser')),
+          credit: (document.querySelector('.credit') || {}).textContent || '',
           picker: document.getElementById('picker').classList.contains('show')
         };
       });
 
       const s0 = await state();
-      judge(s0.open === 'true' && s0.aria === 'true', '既定は開（aria-expanded=true）',
-        `data-open=${s0.open} / aria-expanded=${s0.aria}`);
-      judge(s0.strip && s0.depth, '開のときは帯と階梯が出ている');
+      judge(!s0.grip && !s0.sheetBody, 'つまみ（#grip）と #sheetBody が無い',
+        `#grip ${s0.grip} / #sheetBody ${s0.sheetBody}`);
+      judge(s0.dataOpen === 0, 'data-open が無い', `${s0.dataOpen}件`);
+      judge(s0.ariaExpanded === 0, 'aria-expanded が無い', `${s0.ariaExpanded}件`);
+      judge(!s0.depthHead, '見出し「顕れの深さ 05／10」が無い');
+      judge(s0.cap.trim() === '深さ' && s0.capPx >= 12, '右の列の上端に「深さ」の2字（12px以上）',
+        `「${s0.cap.trim()}」 ${s0.capPx}px`);
+      judge(s0.strip && s0.depth, '顔の列と階梯が常に出ている');
+      judge(s0.save && s0.chooser, '名札と「写真に保存」が出ている');
+      judge(s0.credit.indexOf('二次創作') >= 0, '下の面に二次創作の一行がある', s0.credit.trim());
 
-      await page.click('#grip');
-      await new Promise(r => setTimeout(r, 400));
+      // 名札のタップはこれまでどおり札を開く（役は分かれたまま）
+      await page.click('#chooser');
       const s1 = await state();
-      judge(s1.open === 'false' && s1.aria === 'false', 'つまみのタップで閉じる（aria-expanded=false）',
-        `data-open=${s1.open} / aria-expanded=${s1.aria}`);
-      judge(!s1.strip && !s1.depth, '閉のとき帯と階梯が画面から消える',
-        `帯 ${s1.strip} / 階梯 ${s1.depth}`);
-      judge(s1.save && s1.chooser, '閉でも名札と「写真に保存」は出ている');
+      judge(s1.picker, '名札をタップすると札が開く');
+      await page.keyboard.press('Escape');
 
-      await page.click('#grip');
-      await new Promise(r => setTimeout(r, 400));
-      const s2 = await state();
-      judge(s2.open === 'true' && s2.strip && s2.depth, 'もう一度押すと開く');
-
-      // 名札の上を下へなぞる → 閉じる。そのとき札（#picker）は開かない
+      // 名札の上を下へなぞっても、もう何も畳まれない（状態はひとつ）
       const nf = await page.evaluate(() => {
         const r = document.getElementById('chooser').getBoundingClientRect();
         return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
@@ -216,27 +243,9 @@ async function main() {
       await page.mouse.move(nf.x, nf.y + 40, { steps: 6 });
       await page.mouse.up();
       await new Promise(r => setTimeout(r, 400));
-      const s3 = await state();
-      judge(s3.open === 'false', '名札の上を下へなぞると閉じる', `data-open=${s3.open}`);
-      judge(!s3.picker, 'なぞった回は札（御霊を選ぶ）を開かない');
-
-      // つまみの上を上へなぞる → 開く
-      const gp = await page.evaluate(() => {
-        const r = document.getElementById('grip').getBoundingClientRect();
-        return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-      });
-      await page.mouse.move(gp.x, gp.y);
-      await page.mouse.down();
-      await page.mouse.move(gp.x, gp.y - 40, { steps: 6 });
-      await page.mouse.up();
-      await new Promise(r => setTimeout(r, 400));
-      const s4 = await state();
-      judge(s4.open === 'true', 'つまみの上を上へなぞると開く', `data-open=${s4.open}`);
-
-      // 名札のタップ（なぞらない）はこれまでどおり札を開く
-      await page.click('#chooser');
-      const s5 = await state();
-      judge(s5.picker, '名札をタップすれば札は開く（役は分かれたまま）');
+      const s2 = await state();
+      judge(s2.strip && s2.depth && s2.save, '名札の上を下へなぞっても畳まれない',
+        `顔の列 ${s2.strip} / 階梯 ${s2.depth}`);
       judge(errors.length === 0, '例外が出ていない', errors.join(' / '));
       await page.close();
     }
@@ -347,8 +356,8 @@ async function main() {
       await page.close();
     }
 
-    /* ---------- 7 顔の帯（第5便・最初の画面に29柱の顔がいる） ---------- */
-    console.log('\n【顔の帯】');
+    /* ---------- 7 顔の列（第5便の帯を第6便その2で縦にした・最初の画面に29柱の顔がいる） ---------- */
+    console.log('\n【顔の列】');
     {
       const page = await browser.newPage();
       const errors = [];
@@ -357,11 +366,11 @@ async function main() {
       await page.goto(base + '#size=1179x2556', { waitUntil: 'load' });
       await ready(page);
       await page.waitForFunction(() => !document.getElementById('save').disabled, { timeout: 30000 });
-      // lazy 読み込みなので、帯を端まで送ってから数える
+      // lazy 読み込みなので、列を端まで送ってから数える（第6便その2で縦になった）
       await page.evaluate(async () => {
         const s = document.getElementById('strip');
-        for (let x = 0; x <= s.scrollWidth; x += 200) {
-          s.scrollLeft = x;
+        for (let y = 0; y <= s.scrollHeight; y += 200) {
+          s.scrollTop = y;
           await new Promise(r => setTimeout(r, 120));
         }
         await new Promise(r => setTimeout(r, 600));
@@ -380,23 +389,34 @@ async function main() {
           pressed: btns.filter(b => b.getAttribute('aria-pressed') === 'true').length,
           gaps: document.querySelectorAll('#strip .sato-gap').length,
           minName: Math.min(...[...document.querySelectorAll('#strip button span')]
-            .map(s => parseFloat(getComputedStyle(s).fontSize)))
+            .map(s => parseFloat(getComputedStyle(s).fontSize))),
+          // 縦に送れる・横にはみ出さない（SPEC §7.7 #2）
+          scrollH: document.getElementById('strip').scrollHeight,
+          clientH: document.getElementById('strip').clientHeight,
+          scrollW: document.getElementById('strip').scrollWidth,
+          clientW: document.getElementById('strip').clientWidth,
+          snap: getComputedStyle(document.getElementById('strip')).scrollSnapType,
+          ovx: getComputedStyle(document.getElementById('strip')).overflowX
         };
       });
-      judge(m.count === 29, '帯に29柱ならんでいる', `${m.count}柱`);
-      judge(m.broken.length === 0 && m.loaded === 29, '帯の顔が29柱ぜんぶ出る',
+      judge(m.count === 29, '列に29柱ならんでいる', `${m.count}柱`);
+      judge(m.broken.length === 0 && m.loaded === 29, '列の顔が29柱ぜんぶ出る',
         `読めた ${m.loaded}/29` + (m.broken.length ? ' / 欠け ' + m.broken.join(',') : ''));
-      judge(m.minSide >= 44, '帯の押し所が44px以上', `最小 ${m.minSide.toFixed(1)}px`);
+      judge(m.minSide >= 44, '列の押し所が44px以上', `最小 ${m.minSide.toFixed(1)}px`);
       judge(m.imgHandlers === 0, '<img> にクリックを付けていない');
-      judge(m.pressed === 1, '帯の選んだ印はひとつだけ', `${m.pressed}件`);
+      judge(m.pressed === 1, '列の選んだ印はひとつだけ', `${m.pressed}件`);
       judge(m.gaps === 4, '里の境に隙間がある（5里 → 4か所）', `${m.gaps}か所`);
-      judge(m.minName >= 12, '帯の名前が12px以上', `最小 ${m.minName}px`);
+      judge(m.minName >= 12, '列の名前が12px以上', `最小 ${m.minName}px`);
+      judge(m.scrollH > m.clientH, '列は縦に送れる', `中身 ${m.scrollH}px / 見えている ${m.clientH}px`);
+      judge(m.scrollW <= m.clientW + 1 && m.ovx === 'hidden', '列は横にはみ出さない',
+        `中身 ${m.scrollW}px / 列 ${m.clientW}px / overflow-x ${m.ovx}`);
+      judge(/y/.test(m.snap), '列は縦の scroll-snap', m.snap);
 
-      // 帯で選ぶと額の中が入れ替わる（札に潜らない）
+      // 列で選ぶと額の中が入れ替わる（札に潜らない）
       const after = await page.evaluate(async () => {
         const b = [...document.querySelectorAll('#strip button')]
           .find(x => x.querySelector('img').src.includes('/shinra_icon.webp'));
-        if (!b) return { err: '帯に shinra が無い' };
+        if (!b) return { err: '列に shinra が無い' };
         b.click();
         const t0 = Date.now();
         while (document.getElementById('save').disabled) {
@@ -410,10 +430,10 @@ async function main() {
             .filter(x => x.getAttribute('aria-pressed') === 'true').length
         };
       });
-      if (after.err) ng('帯で選ぶと額が入れ替わる', after.err);
+      if (after.err) ng('列で選ぶと額が入れ替わる', after.err);
       else {
-        judge(after.name === 'シンラ', '帯で選ぶと名札が入れ替わる', after.name);
-        judge(!after.pickerOpen, '帯で選んでも札は開かない');
+        judge(after.name === 'シンラ', '列で選ぶと名札が入れ替わる', after.name);
+        judge(!after.pickerOpen, '列で選んでも札は開かない');
         judge(after.pressed === 1, '選んだあとも印はひとつだけ', `${after.pressed}件`);
       }
       judge(errors.length === 0, '例外が出ていない', errors.join(' / '));
@@ -439,26 +459,33 @@ async function main() {
           .observe(s, { attributes: true, attributeFilter: ['disabled'] });
       });
 
+      // 第6便その2で階梯は縦。01 が下・10 が上なので、2段目 → 8段目は**上へ**なぞる
       const box = await page.evaluate(() => {
         const bs = [...document.querySelectorAll('#depth button')];
         const a = bs[1].getBoundingClientRect(), b = bs[7].getBoundingClientRect();
-        return { x1: a.left + a.width / 2, x2: b.left + b.width / 2, y: a.top + a.height / 2 };
+        return {
+          y1: a.top + a.height / 2, y2: b.top + b.height / 2,
+          x: a.left + a.width / 2, up: b.top < a.top
+        };
       });
-      await page.mouse.move(box.x1, box.y);
+      judge(box.up, 'なぞりは下（01側）から上（10側）へ動く',
+        `2段目 y=${box.y1.toFixed(0)} → 8段目 y=${box.y2.toFixed(0)}`);
+      await page.mouse.move(box.x, box.y1);
       await page.mouse.down();
-      await page.mouse.move(box.x2, box.y, { steps: 12 });   // 2段目 → 8段目までなぞる
-      const mid = await page.evaluate(() => ({
-        pressed: [...document.querySelectorAll('#depth button')]
-          .findIndex(b => b.getAttribute('aria-pressed') === 'true') + 1,
-        num: document.getElementById('depthNum').textContent
-      }));
+      await page.mouse.move(box.x, box.y2, { steps: 12 });   // 2段目 → 8段目まで縦になぞる
+      const mid = await page.evaluate(() => {
+        const bs = [...document.querySelectorAll('#depth button')];
+        const i = bs.findIndex(b => b.getAttribute('aria-pressed') === 'true');
+        return { pressed: i + 1, num: i < 0 ? '' : bs[i].textContent.trim() };
+      });
       await page.mouse.up();
       await page.waitForFunction(() => !document.getElementById('save').disabled, { timeout: 30000 });
       const end = await page.evaluate(() => ({
         pressed: [...document.querySelectorAll('#depth button')]
           .findIndex(b => b.getAttribute('aria-pressed') === 'true') + 1,
-        num: document.getElementById('depthNum').textContent,
-        // 数字は選んだ段にだけ出す
+        num: ([...document.querySelectorAll('#depth button')]
+          .find(b => b.getAttribute('aria-pressed') === 'true') || { textContent: '' }).textContent.trim(),
+        // 数字は選んだ段にだけ出す（見出しの「05／10」は第6便その2で消した）
         numbered: [...document.querySelectorAll('#depth button')].filter(b => b.textContent.trim()).length,
         labels: [...document.querySelectorAll('#depth button')]
           .filter(b => /^深さ \d+$/.test(b.getAttribute('aria-label') || '')).length,
@@ -471,7 +498,7 @@ async function main() {
       judge(end.pressed === 8 && end.num === '08', '離した段に落ち着く', `深さ ${end.pressed}（表示 ${end.num}）`);
       judge(end.numbered === 1, '数字は選んだ段にだけ出る', `${end.numbered}段`);
       judge(end.labels === 10, '10段すべてに aria-label が残っている', `${end.labels}段`);
-      judge(end.filled === 8, '選んだ段まで金泥が満ちる', `${end.filled}段ぶん`);
+      judge(end.filled === 8, '選んだ段まで下から金泥が満ちる', `${end.filled}段ぶん`);
       judge(end.reloads <= 2, 'なぞり1回の読み込みは1回だけ（6段またいでも増えない）',
         `読み込み ${end.reloads}回`);
       judge(errors.length === 0, '例外が出ていない', errors.join(' / '));
@@ -793,11 +820,11 @@ async function main() {
     await new Promise(r => server.close(r));   // 立てたサーバーはここで閉じる
   }
 
-  console.log('\n【額の実寸（幅 px）】');
-  console.log('  端末                                 開      閉');
+  console.log('\n【額の実寸】');
+  console.log('  端末                              幅 px    高さ px   階梯の段の背');
   for (const z of SIZES) {
-    console.log(`  ${z.dev.padEnd(28, ' ')} ${z.open.toFixed(1).padStart(7)} ${z.closed.toFixed(1).padStart(7)}`
-      + `   （高さ ${z.openH.toFixed(0)} → ${z.closedH.toFixed(0)}）`);
+    console.log(`  ${z.dev.padEnd(28, ' ')} ${z.w.toFixed(1).padStart(7)} ${z.h.toFixed(1).padStart(9)}`
+      + `   ${z.depthStep.toFixed(1)}px`);
   }
 
   console.log(failures === 0 ? '\n通った。' : `\n落ちた項目が ${failures} 件ある。`);
