@@ -16,9 +16,11 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 fill=%22%23131320%22/%3E%3Crect x=%229%22 y=%223%22 width=%2214%22 height=%2226%22 rx=%223%22 fill=%22%231B1B2E%22/%3E%3Cpath d=%22M10.5 23.5a5.5 5.5 0 1 1 9.6 2.4%22 fill=%22none%22 stroke=%22%23D9A94C%22 stroke-width=%221.7%22 stroke-linecap=%22round%22/%3E%3C/svg%3E">
 <style>
   :root{
+    /* 地は宵闇藍の二色一組だけ。統合もしないし、三色目も作らない
+       （第5便で --panel:#100E1C を廃した。面（--night-2）の上に載る部品は --night、
+         body（--night）の上に載る面は --night-2）。 */
     --night:#131320;      /* 宵闇藍 */
     --night-2:#1B1B2E;    /* 宵闇藍・明 */
-    --panel:#100E1C;
     --kindei:#D9A94C;     /* 金泥 */
     --kindei-hi:#F0CE7E;
     --shokko:#C93A2E;     /* 蝕紅 */
@@ -39,19 +41,35 @@
   h1{font-size:18px;margin:0 0 2px;color:var(--kindei);letter-spacing:.08em;font-weight:400}
   .sub{font-size:12px;color:var(--ink-dim);margin:0 0 14px}
 
+  /* 開幕＝「顕れ」（SHITSURAE §1 の時間割）。
+     幕は張らない。額の中で絵が闇から顕れ、周りの部品はそのあと一段（0.7秒）で立ち上がる。
+     動かすのは opacity だけ——**レイアウトは最初から占めたまま**なので、あとで跳ねない。
+     透過は通過点であって滞在地ではない。とどまる透過を作らない。 */
+  .rise{transition:opacity 700ms ease}
+  body.veiled .rise{opacity:0}
+  body.locked .rise{pointer-events:none}
+  body.nofade .rise{transition:none}   /* 画面タップで飛ばしたときは即座に立ち上げる */
+
   .stage{
     background:var(--night-2);border-radius:10px;padding:12px;margin-bottom:16px;
     text-align:center;
   }
   /* 押し所が画面外へ出ないよう、プレビューの背は viewport で頭打ちにする
      （SHITSURAE.md §6「結果カードの背を伸ばさない」）。
-     第1便で下に選ぶ帯が2本増えたぶん、52vh から 44vh へ譲った（scripts/check-layout.js で実測）。 */
+     第1便で下に選ぶ帯が2本増えたぶん 52vh → 44vh へ譲り、第5便で注記を畳んだぶん戻した。
+     **「写真に保存」が最初の画面に収まるほうが優先**（scripts/check-layout.js が3端末で測る）。 */
   .frame{
     position:relative;display:inline-block;border-radius:4px;overflow:hidden;
     box-shadow:0 8px 28px rgba(0,0,0,.55);
     background:var(--night);
     line-height:0;
-    height:44vh;max-width:100%;   /* aspect-ratio は JS が端末の実寸から入れる */
+    max-width:100%;               /* aspect-ratio は JS が端末の実寸から入れる */
+    /* **iOS Safari の vh は「バーが隠れている時の高さ」で固定**（852）。バーが出ていて
+       740 しか見えていない時も 48vh は 409px になり、その差ぶん「写真に保存」が下へ押し出される。
+       svh（小さいほうの viewport）なら見えている高さで測るので、バーが出ていても収まる。
+       対応していない端末のために vh を先に書いて残す。 */
+    height:48vh;
+    height:48svh;
   }
   /* 枠の側で寸法を決める。canvas に max-* を掛けると canvas だけが縮み、
      枠は shrink-to-fit の幅（＝利用可能幅）のまま残ってガイドの破線がはみ出す。 */
@@ -86,43 +104,87 @@
   .save:active{background:var(--kindei-hi)}
   .save[disabled]{opacity:.4;cursor:default}
 
-  /* 御霊を選ぶ入口。押すと「開いて閉じる札」が開く（SHITSURAE §7・既にある型を使う） */
+  /* 名札。額と帯のあいだに1行だけ。押すと「開いて閉じる札」が開く（SHITSURAE §7・既にある型を使う）。
+     **帯＝隣を流し見る／札＝名前で飛ぶ**、と役を分けている。 */
   .chooser{
-    display:flex;align-items:center;gap:10px;width:100%;margin-top:14px;
-    min-height:56px;padding:6px 12px 6px 6px;
+    display:flex;align-items:center;gap:8px;width:100%;margin-top:10px;
+    min-height:44px;padding:6px 12px;
     border-radius:5px;border:1px solid var(--line);
-    background:var(--panel);color:var(--ink);text-align:left;
+    background:var(--night);color:var(--ink);text-align:left;
   }
-  .chooser:active{background:#171430}
-  .chooser img{width:44px;height:44px;object-fit:contain;border-radius:4px;flex:none}
-  .chooser .who{flex:1;min-width:0;line-height:1.35}
-  .chooser .nm{display:block;font-size:15px;color:var(--ink)}
-  .chooser .tg{display:block;font-size:12px;color:var(--ink-dim);font-family:system-ui,sans-serif}
+  .chooser:active{background:var(--night-2)}
+  .chooser .nm{font-size:15px;color:var(--ink);white-space:nowrap;flex:none}
+  .chooser .tg{
+    flex:1;min-width:0;font-size:12px;color:var(--ink-dim);font-family:system-ui,sans-serif;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
   .chooser .arrow{font-size:12px;color:var(--kindei);flex:none;font-family:system-ui,sans-serif}
 
-  /* 顕れの深さ。10個を横一列に並べる帯（御霊おとしの階梯と同じ形）。
-     幅390pxで44px×10は入らないため、押し所は24pxを床にして詰める（SHITSURAE §2）。 */
-  .depth{display:flex;gap:3px;margin-top:12px}
+  /* 顔の帯。29柱を横に流し見る（最初の画面に顔がいる、が第5便の芯）。
+     里の境に隙間をひとつ入れて、並びが甲賀→伊賀→雑賀→風魔→根の国 であることを見せる。
+     <img> にJSのクリックを付けず <button> で包む（SHITSURAE §2）。
+     選んだ印は金泥の面。輪では出さない——円の光り物は蝕環ひとつだけの決まりがある。 */
+  .strip{
+    display:flex;gap:2px;margin-top:10px;
+    /* 面の縁まで流す（左右の余白ぶん食い込ませ、その幅を内側の余白で返す）。
+       幅375pxでちょうど5柱で切れると、**続きがあることが見えない**（SEで実測）。 */
+    margin-left:-12px;margin-right:-12px;padding:0 12px 2px;
+    overflow-x:auto;overflow-y:hidden;
+    scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .strip::-webkit-scrollbar{display:none}
+  .strip button{
+    flex:none;scroll-snap-align:center;
+    display:flex;flex-direction:column;align-items:center;gap:1px;
+    width:62px;min-height:44px;padding:3px 2px 4px;
+    border:1px solid transparent;border-radius:4px;
+    background:transparent;color:var(--ink-dim);
+  }
+  .strip button img{width:44px;height:44px;object-fit:contain;border-radius:4px;}
+  .strip button span{
+    font-size:12px;line-height:1.25;font-family:system-ui,sans-serif;
+    white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;
+  }
+  .strip button[aria-pressed="true"]{
+    background:rgba(217,169,76,.16);border-color:rgba(217,169,76,.45);color:var(--kindei-hi);
+  }
+  .strip .sato-gap{flex:none;width:6px}
+
+  /* 顕れの深さ。10段の階梯（御霊おとしの階梯と同じ形）。
+     見た目は「**選んだ段まで金泥が満ちる**」——段ごとに濃くし、選んだ段だけ明るい金泥にする。
+     数字は選んだ段にだけ出す（読む文字を1つに絞る。他の段は aria-label が読む）。
+     幅390pxで44px×10は入らないため、押し所は24pxを床にして詰める（SHITSURAE §2）。
+     なぞって選べるので touch-action:pan-y（横のなぞりだけ取り、縦送りは端末に返す。
+     縦送りに化けたときは pointercancel が来るので、段を元に戻して確定しない）。 */
+  .depth-head{
+    margin:10px 0 6px;font-size:12px;line-height:1.4;color:var(--ink-dim);
+    font-family:system-ui,sans-serif;text-align:left;letter-spacing:.06em;
+  }
+  .depth-head b{color:var(--kindei);font-weight:400}
+  .depth{display:flex;gap:3px;touch-action:pan-y;user-select:none;-webkit-user-select:none}
   .depth button{
     flex:1;min-width:24px;min-height:40px;padding:0;
     border-radius:5px;border:1px solid var(--line);
-    background:var(--panel);color:var(--ink-dim);
+    background:var(--night);color:var(--ink-dim);
     font-family:system-ui,sans-serif;font-size:12px;letter-spacing:.02em;
   }
-  .depth button[aria-pressed="true"]{
-    background:var(--kindei);border-color:var(--kindei);color:#1a1408;
-  }
+  .depth button[aria-pressed="true"]{color:#1a1408}
   .depth-note{
-    margin:8px 2px 0;font-size:12px;line-height:1.7;color:var(--ink-dim);
+    margin:0 0 10px;font-size:12px;line-height:1.7;color:var(--ink-dim);
     font-family:system-ui,sans-serif;text-align:left;
   }
+  .depth-note b{color:var(--kindei);font-weight:400}
 
-  /* 御霊を選ぶ札。帳・角丸・✕・外側タップまで既存作と同じ作法にする（SHITSURAE §7） */
-  #picker{
+  /* 開いて閉じる札。帳・角丸・✕・外側タップまで既存作と同じ作法にする（SHITSURAE §7）。
+     第5便で「壁紙にするとき、ひとつだけ」の札（#tips）も同じ型に載せた。
+     遊ぶ人の指が覚えた作法を増やさない。 */
+  #picker,#tips{
     position:fixed;inset:0;display:none;align-items:center;justify-content:center;
-    background:rgba(10,10,20,.72);z-index:12;padding:16px;
+    background:rgba(10,10,20,.72);z-index:12;
+    padding:16px 16px calc(16px + env(safe-area-inset-bottom));
   }
-  #picker.show{display:flex}
+  #picker.show,#tips.show{display:flex}
   .pick-card{
     position:relative;display:flex;flex-direction:column;
     width:min(92vw,380px);max-height:86vh;
@@ -135,7 +197,7 @@
     margin:0 0 12px;font-size:15px;font-weight:400;color:var(--kindei);
     letter-spacing:.1em;text-align:center;
   }
-  #pick-close{
+  #pick-close,#tips-close{
     position:absolute;top:10px;right:12px;width:32px;height:32px;
     font-size:14px;color:var(--ink-dim);background:transparent;
     border:1px solid var(--line);border-radius:50%;
@@ -168,14 +230,13 @@
   }
 
   .howto{
-    background:var(--panel);border-left:2px solid var(--kindei);
+    background:var(--night-2);border-left:2px solid var(--kindei);
     border-radius:0 10px 10px 0;padding:12px 14px;margin-bottom:14px;
   }
-  .howto h3{margin:0 0 6px;font-size:14px;font-weight:400;color:var(--kindei)}
-  .howto p{margin:0;font-size:13px;line-height:1.9;color:var(--ink)}
-  .howto p + p{margin-top:10px;padding-top:10px;border-top:1px solid rgba(157,147,181,.2);color:var(--ink-dim)}
-  .howto b{color:var(--kindei-hi);font-weight:400}
-  .howto a{color:var(--kindei);text-decoration:underline;text-underline-offset:3px}
+  .howto p,.howto-body p{margin:0;font-size:13px;line-height:1.9;color:var(--ink)}
+  .howto p + p,.howto-body p + p{margin-top:10px;padding-top:10px;border-top:1px solid rgba(157,147,181,.2);color:var(--ink-dim)}
+  .howto b,.howto-body b{color:var(--kindei-hi);font-weight:400}
+  .howto a,.howto-body a{color:var(--kindei);text-decoration:underline;text-underline-offset:3px}
 
   .urlbox{
     margin:8px 0 0;padding:8px 10px;border-radius:5px;
@@ -192,7 +253,8 @@
   .copy:active{background:rgba(217,169,76,.22)}
   .copy.done{background:var(--kindei);color:#1a1408;border-color:var(--kindei)}
 
-  details{background:var(--panel);border-radius:10px;padding:10px 14px;margin-bottom:14px}
+  details{background:var(--night-2);border-radius:10px;padding:10px 14px;margin-bottom:14px}
+  details[open] summary{margin-bottom:10px}   /* 閉じているときは背を足さない */
   summary{
     font-size:13px;color:var(--ink-dim);cursor:pointer;list-style:none;
     font-family:system-ui,sans-serif;min-height:24px;display:flex;align-items:center;
@@ -213,65 +275,69 @@
   footer{margin-top:20px;font-size:12px;color:var(--ink-dim);line-height:1.8;
     font-family:system-ui,sans-serif}
 
-  /* 背の低い画面では縦の余白だけを詰める。横の幅指定は壊さない（SHITSURAE §6） */
+  /* 背の低い画面では縦の余白だけを詰める。横の幅指定は壊さない（SHITSURAE §6）。
+     ここの 37vh は第1便で実測して決めた値。第5便でも動かさない（SPEC §2.6）。 */
   @media (max-height:700px){
     body{padding-top:10px}
     .sub{margin-bottom:10px}
-    .frame{height:37vh}
-    .chooser{margin-top:10px;min-height:52px}
-    .depth{margin-top:8px}
-    .save{margin-top:10px}
+    .frame{height:37vh;height:37svh}
+    .chooser{margin-top:6px}
+    .strip{margin-top:4px}
+    .depth-head{margin:5px 0 3px}
+    .save{margin-top:8px}
   }
 </style>
 </head>
-<body>
+<body class="veiled locked">
 
-<h1>夜じたて</h1>
-<p class="sub">札絵を、その端末の夜に合わせて額装します</p>
+<h1 class="rise">夜じたて</h1>
+<p class="sub rise">札絵を、その端末の夜に合わせて額装します</p>
 
 <div class="stage">
   <div class="frame" id="frame">
     <canvas id="cv"></canvas>
-    <div class="guide top"><span>時計の帯</span></div>
-    <div class="guide bottom"><span>釦の帯</span></div>
+    <div class="guide top rise"><span>時計の帯</span></div>
+    <div class="guide bottom rise"><span>釦の帯</span></div>
     <div class="waiting">顕れています…</div>
   </div>
 
-  <button class="chooser" id="chooser" aria-haspopup="dialog">
-    <img id="chooserIcon" alt="" width="44" height="44" decoding="async">
-    <span class="who">
-      <span class="nm" id="chooserName">—</span>
-      <span class="tg" id="chooserTag"></span>
-    </span>
-    <span class="arrow">選ぶ ▾</span>
+  <button class="chooser rise" id="chooser" aria-haspopup="dialog">
+    <span class="nm" id="chooserName">—</span>
+    <span class="tg" id="chooserTag"></span>
+    <span class="arrow">名前で選ぶ ▾</span>
   </button>
 
-  <div class="depth" id="depth" role="group" aria-label="顕れの深さ"></div>
+  <div class="strip rise" id="strip" role="group" aria-label="御霊を選ぶ"></div>
+
+  <p class="depth-head rise"><b>顕れの深さ</b>　<span id="depthNum">05</span>／10</p>
+  <div class="depth rise" id="depth" role="group" aria-label="顕れの深さ"></div>
+
+  <button id="save" class="save rise" disabled>写真に保存</button>
+</div>
+
+<details class="rise">
+  <summary>壁紙にする手順</summary>
   <p class="depth-note">
-    <b style="color:var(--kindei);font-weight:400">顕れの深さ</b> — 浅いほど暗く静かに、深いほど極彩色に顕れます。
+    <b>顕れの深さ</b> — 浅いほど暗く静かに、深いほど極彩色に顕れます。
     時計も通知もこの上に乗るので、壁紙には浅い段のほうがよく効きます。
   </p>
+  <div class="howto-body" id="howtoText">
+    <p>
+      写真アプリで開く → 共有 → <b>壁紙に設定</b>。
+      ただし <b>iOSは勝手に顔まで拡大します</b>。
+      設定画面で<b>指2本を近づけて縮め</b>、上に藍色の帯が出るまでズームを戻してください。
+      そこが額装した通りの姿です。
+    </p>
+    <p>
+      この拡大の正体は「<b>被写体を切り取る</b>」という設定です。
+      <a href="https://github.com/hiroHGxx/yo-jitate/blob/main/docs/SHORTCUT.md">ショートカットを2手だけ組む</a>と
+      そこを切れるので、縮める操作なしで額装どおりに入ります（実機で確認済み）。
+    </p>
+  </div>
+</details>
 
-  <button id="save" class="save" disabled>写真に保存</button>
-</div>
-
-<div class="howto">
-  <h3>壁紙にするとき、ひとつだけ</h3>
-  <p>
-    写真アプリで開く → 共有 → <b>壁紙に設定</b>。
-    ただし <b>iOSは勝手に顔まで拡大します</b>。
-    設定画面で<b>指2本を近づけて縮め</b>、上に藍色の帯が出るまでズームを戻してください。
-    そこが額装した通りの姿です。
-  </p>
-  <p>
-    この拡大の正体は「<b>被写体を切り取る</b>」という設定です。
-    <a href="https://github.com/hiroHGxx/yo-jitate/blob/main/docs/SHORTCUT.md">ショートカットを2手だけ組む</a>と
-    そこを切れるので、縮める操作なしで額装どおりに入ります（実機で確認済み）。
-  </p>
-</div>
-
-<div class="howto" id="dailyBox" hidden>
-  <h3>毎朝ひとりでに替えるなら</h3>
+<details class="howto rise" id="dailyBox" hidden>
+  <summary>毎朝ひとりでに替えるなら</summary>
   <p>
     この端末（<b id="dailySize">—</b>）に合う「今日の一枚」を、毎朝ここに置いています。
     ショートカットの「<b>URLの内容を取得</b>」にこれを貼ってください。
@@ -282,14 +348,14 @@
     作り方は<a href="https://github.com/hiroHGxx/yo-jitate/blob/main/docs/SHORTCUT.md">こちら</a>。
     日付から一意に決まるので、29柱×10段を290日で一巡します。
   </p>
-</div>
+</details>
 
-<details>
+<details class="rise">
   <summary>この端末で通ったこと</summary>
   <div class="log" id="log">測っています…</div>
 </details>
 
-<footer>
+<footer class="rise">
   破線は保存画像には入りません。画面で位置を見るための目安です。<br>
   この道具は月蝕綺譚の二次創作で、公式とは関係ありません。絵は公式の素材蔵から読み込み、
   この端末の中で額装しています。原本を配ってはいません。
@@ -300,6 +366,15 @@
     <button id="pick-close" aria-label="閉じる">✕</button>
     <h2>御霊を選ぶ</h2>
     <div class="pick-body" id="pickBody"></div>
+  </div>
+</div>
+
+<!-- 保存が通ったときだけ出す札。中身は「壁紙にする手順」の2段落をそのまま写す（JSが複製する） -->
+<div id="tips" role="dialog" aria-modal="true" aria-label="壁紙にするとき、ひとつだけ">
+  <div class="pick-card">
+    <button id="tips-close" aria-label="閉じる">✕</button>
+    <h2>壁紙にするとき、ひとつだけ</h2>
+    <div class="pick-body howto-body" id="tipsBody"></div>
   </div>
 </div>
 
@@ -390,6 +465,30 @@
     lastTouch = now;
   }, {passive:false});
   document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, {passive:false});
+
+  /* ---------- 開幕「顕れ」の時間割（SHITSURAE §1） ----------
+     幕は張らない。0ms は地と蝕環だけの額、絵が届いたら額の中で顕れ、
+     1200ms に周りの部品が一段（700ms）で立ち上がり、1260ms で押せる。
+     **待ちの起点はページを開いた時刻**（画像の onload を起点にしない。重い端末ほど後ろへずれる）。
+     この段は他のどこよりも先に置く——ここより上で転ぶと、部品が伏せたまま起き上がらない。 */
+  var RISE_AT = 1200, UNLOCK_AT = 1260;
+  var introDone = false, tRise = 0, tUnlock = 0;
+  function riseChrome(){ document.body.classList.remove('veiled'); }
+  function unlockChrome(){ document.body.classList.remove('locked'); introDone = true; }
+  function skipIntro(){
+    if (introDone) return;
+    clearTimeout(tRise); clearTimeout(tUnlock);
+    document.body.classList.add('nofade');     // 透過の途中で止めない。飛ばしたら即座に立てる
+    riseChrome(); unlockChrome();
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){ document.body.classList.remove('nofade'); });
+    });
+    if (revealRAF) revealSkip = true;          // 顕れの途中なら、絵も 1 へ
+  }
+  document.addEventListener('pointerdown', skipIntro, true);   // 画面のどこでも飛ばせる
+  document.addEventListener('click', skipIntro, true);         // PointerEvent が無い端末の保険
+  tRise   = setTimeout(riseChrome,   Math.max(0, RISE_AT   - performance.now()));
+  tUnlock = setTimeout(unlockChrome, Math.max(0, UNLOCK_AT - performance.now()));
 
   /* ---------- 診断の記録 ---------- */
   var lines = [];
@@ -499,25 +598,143 @@
   document.getElementById('chooser').addEventListener('click', openPicker);
   document.getElementById('pick-close').addEventListener('click', closePicker);
   picker.addEventListener('click', function(e){ if (e.target === picker) closePicker(); });
-  document.addEventListener('keydown', function(e){
-    if (e.key === 'Escape' && picker.classList.contains('show')) closePicker();
-  });
 
-  /* ---------- ③ 顕れの深さの帯 ---------- */
+  /* ---------- ②-b 顔の帯（最初の画面に29柱の顔を出す） ----------
+     札（#picker）は名前で飛ぶ用、帯は隣を流し見る用。役を分けて両方残す。 */
+  var stripEl = document.getElementById('strip');
+  var stripButtons = {};
+  (function buildStrip(){
+    var first = true;
+    SATO_ORDER.forEach(function(sato){
+      var members = SPIRITS.filter(function(s){ return s.sato === sato; });
+      if (!members.length) return;
+      if (!first) {                       // 里の境にひと呼吸
+        var gap = document.createElement('div');
+        gap.className = 'sato-gap';
+        gap.setAttribute('aria-hidden', 'true');
+        stripEl.appendChild(gap);
+      }
+      first = false;
+      members.forEach(function(s){
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.setAttribute('aria-label', s.name + '（' + s.sato + '・' + s.gogyo + '）');
+        b.setAttribute('aria-pressed', 'false');
+        var img = document.createElement('img');
+        img.alt = '';                 // 名前は隣の span が読む。二重に読ませない
+        img.width = 44; img.height = 44;
+        img.loading = 'lazy';         // 29柱ぶんで合計2.6MB。見えているぶんだけ取る
+        img.decoding = 'async';
+        img.src = iconURL(s.id);
+        var nm = document.createElement('span');
+        nm.textContent = s.name;
+        b.appendChild(img); b.appendChild(nm);
+        b.addEventListener('click', function(){ choose(s.id); });
+        stripEl.appendChild(b);
+        stripButtons[s.id] = b;
+      });
+    });
+  })();
+
+  // 帯は選んだ柱を中央へ寄せる。block:'nearest' で頁のほうを縦に動かさない
+  function centerStrip(){
+    var b = stripButtons[curId];
+    if (!b || !b.scrollIntoView) return;
+    try { b.scrollIntoView({block:'nearest', inline:'center'}); }
+    catch(e) { stripEl.scrollLeft = b.offsetLeft - (stripEl.clientWidth - b.offsetWidth) / 2; }
+  }
+
+  /* ---------- ③ 顕れの深さの階梯 ---------- */
   var depthEl = document.getElementById('depth');
+  var depthNum = document.getElementById('depthNum');
   var depthButtons = [];
   for (var d = 1; d <= 10; d++) {
     (function(depth){
       var b = document.createElement('button');
       b.type = 'button';
-      b.textContent = String(depth).padStart(2,'0');
-      b.setAttribute('aria-label', '深さ ' + depth);
+      b.setAttribute('aria-label', '深さ ' + depth);   // 数字を出さない段も、読み上げには残す
       b.setAttribute('aria-pressed', 'false');
       b.addEventListener('click', function(){ chooseDepth(depth); });
       depthEl.appendChild(b);
       depthButtons.push(b);
     })(d);
   }
+
+  // 「選んだ段まで金泥が満ちる」。段ごとに濃くし、選んだ段だけ明るい金泥にする。
+  // 上の段は地のまま。数字は選んだ段にだけ出す。
+  function paintDepth(sel){
+    depthButtons.forEach(function(b, i){
+      var n = i + 1;
+      if (n === sel) {
+        b.setAttribute('aria-pressed', 'true');
+        b.textContent = String(sel).padStart(2, '0');
+        b.style.backgroundColor = 'var(--kindei-hi)';
+        b.style.borderColor = 'var(--kindei-hi)';
+      } else {
+        b.setAttribute('aria-pressed', 'false');
+        b.textContent = '';
+        if (n < sel) {
+          var a = sel > 2 ? 0.18 + 0.62 * ((n - 1) / (sel - 2)) : 0.18;
+          b.style.backgroundColor = 'rgba(217,169,76,' + a.toFixed(3) + ')';
+          b.style.borderColor = 'rgba(217,169,76,.30)';
+        } else {
+          b.style.backgroundColor = '';
+          b.style.borderColor = '';
+        }
+      }
+    });
+    if (depthNum) depthNum.textContent = String(sel).padStart(2, '0');
+  }
+
+  /* なぞって選ぶ。指の下の段を追うが、**読み込むのは指を離した時か150ms止まった時に1回**。
+     なぞっている間に読みにいくと、10段ぶんの札絵を無駄に取りにいくことになる。
+     一段ごとの click も残す（機械（check-layout / check-frame / daily.js）はこちらを押す）。 */
+  var dragOn = false, dragDepth = 0, holdT = 0;
+  function depthAt(x){
+    var best = 1, bestD = Infinity;
+    for (var i = 0; i < depthButtons.length; i++) {
+      var r = depthButtons[i].getBoundingClientRect();
+      if (x >= r.left && x <= r.right) return i + 1;
+      var dd = x < r.left ? r.left - x : x - r.right;
+      if (dd < bestD) { bestD = dd; best = i + 1; }
+    }
+    return best;
+  }
+  function holdLater(dp){
+    clearTimeout(holdT);
+    holdT = setTimeout(function(){ chooseDepth(dp); }, 150);
+  }
+  depthEl.addEventListener('pointerdown', function(e){
+    if (e.button != null && e.button > 0) return;
+    dragOn = true;
+    dragDepth = depthAt(e.clientX);
+    try { depthEl.setPointerCapture(e.pointerId); } catch(err) {}
+    paintDepth(dragDepth);        // なぞり中は印と数字だけ動かす
+    holdLater(dragDepth);
+  });
+  depthEl.addEventListener('pointermove', function(e){
+    if (!dragOn) return;
+    var dp = depthAt(e.clientX);
+    if (dp === dragDepth) return;
+    dragDepth = dp;
+    paintDepth(dp);
+    holdLater(dp);
+  });
+  function endDrag(){
+    if (!dragOn) return;
+    dragOn = false;
+    clearTimeout(holdT);
+    chooseDepth(dragDepth);
+  }
+  // 縦送りに化けた（端末が指を持っていった）ときは確定しない。印を元の段へ戻す
+  function cancelDrag(){
+    if (!dragOn) return;
+    dragOn = false;
+    clearTimeout(holdT);
+    paintDepth(curDepth);
+  }
+  depthEl.addEventListener('pointerup', endDrag);
+  depthEl.addEventListener('pointercancel', cancelDrag);
 
   /* ---------- ④ 素材蔵から crossOrigin で読む ---------- */
   var corsReported = false;
@@ -530,6 +747,30 @@
       img.onerror = function(){ reject(new Error('読み込めない: ' + fudaURL(id, depth))); };
       img.src = fudaURL(id, depth);
     });
+  }
+
+  /* 焼き上がったら、同じ御霊の**残り9段を後ろで先読み**する（選んだ段の隣から外へ）。
+     2回目以降のなぞりが即座に顕れる。御霊を替えたら古いものは捨てるだけでよい（止めなくてよい）。
+     選び直しの連打で無駄に取りにいかないよう、少し置いてから始める。 */
+  var prefetched = [];
+  var prefetchT = 0;
+  function prefetchRest(id, depth, token){
+    clearTimeout(prefetchT);
+    prefetchT = setTimeout(function(){
+      if (token !== seq) return;
+      prefetched = [];
+      var order = [];
+      for (var k = 1; k <= 9; k++) {
+        if (depth - k >= 1) order.push(depth - k);
+        if (depth + k <= 10) order.push(depth + k);
+      }
+      order.forEach(function(dp){
+        var im = new Image();
+        im.crossOrigin = 'anonymous';   // 本番と同じ取り方でないと、キャッシュが効かない
+        im.src = fudaURL(id, dp);
+        prefetched.push(im);
+      });
+    }, 600);
   }
 
   /* ---------- ⑤ 額装して描く ---------- */
@@ -575,7 +816,14 @@
     };
   }
 
-  function frame(img){
+  // 地と蝕環だけを引く。0ms の額（絵が届く前）はこの状態で見せる。
+  // 蝕環 — 喰われた筆の円相をひとつだけ。散らさない。
+  // 決めごとが3つある。どれも第2便で一度ずつ間違えて直したもの:
+  //  ① **絵の前ではなく後ろに引く。** 前だと脚や履物の上に線が乗り、描き足した輪に見える
+  //  ② **釦の帯（下12%）で切らない。** クリップすると弧の端が横一直線で切れ、その切り口が
+  //     それ自体で不自然になる。**輪の側を溶かして**帯に届く前に消す
+  //  ③ 絵に減光されるぶん、素の値より濃く置く（0.20 では絵の後ろで見えなくなる）
+  function paintGround(){
     // 地 — 宵闇藍の二色一組。統合しない。純黒は使わない
     var g = ctx.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0,   '#131320');
@@ -583,6 +831,17 @@
     g.addColorStop(1,   '#131320');
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
+
+    var ring = ringPainter();
+    ring.paint(ctx);
+    return ring;
+  }
+
+  // 絵を額に収める段取り。**顕れの1コマごとに組み直さない**（1179×2556 を毎コマ削るのは重い）。
+  // 同じ絵なら作った板を使い回す。
+  var artCache = null;
+  function composeArt(img){
+    if (artCache && artCache.img === img) return artCache;
 
     // 絵の置き所 — 幅合わせ・下寄せ。釦の帯の少し上で止める
     var bottom = H * 0.94;
@@ -621,25 +880,59 @@
 
     octx.globalCompositeOperation = 'source-over';
 
-    // 蝕環 — 喰われた筆の円相をひとつだけ。散らさない。
-    // 決めごとが3つある。どれも第2便で一度ずつ間違えて直したもの:
-    //  ① **絵の前ではなく後ろに引く。** 前だと脚や履物の上に線が乗り、描き足した輪に見える
-    //  ② **釦の帯（下12%）で切らない。** クリップすると弧の端が横一直線で切れ、その切り口が
-    //     それ自体で不自然になる。**輪の側を溶かして**帯に届く前に消す
-    //  ③ 絵に減光されるぶん、素の値より濃く置く（0.20 では絵の後ろで見えなくなる）
-    var ring = ringPainter();
-    ring.paint(ctx);
+    artCache = {
+      img:img, off:off, left:left, top:top, bottom:bottom,
+      drawW:drawW, drawH:drawH, headFade:headFade, footFade:footFade
+    };
+    return artCache;
+  }
 
-    ctx.drawImage(off, left, top, drawW, drawH);
+  // alpha は「顕れ」の途中だけ 1 未満になる。**alpha=1 の画素は第2便から変えない**
+  // （地→蝕環→絵 の順も同じ。scripts/check-frame.js が数値で見張っている）。
+  function frame(img, alpha){
+    var a = (alpha == null) ? 1 : alpha;
+    var ring = paintGround();
+    var art = composeArt(img);
+
+    ctx.globalAlpha = a;
+    ctx.drawImage(art.off, art.left, art.top, art.drawW, art.drawH);
+    ctx.globalAlpha = 1;
 
     // 検査から幾何を測れるようにしておく（scripts/check-frame.js が読む）
     window.__yojitate = {
-      W:W, H:H, top:top, bottom:bottom, left:left, drawW:drawW, drawH:drawH,
-      headFade:headFade, footFade:footFade,
+      W:W, H:H, top:art.top, bottom:art.bottom, left:art.left, drawW:art.drawW, drawH:art.drawH,
+      headFade:art.headFade, footFade:art.footFade,
       ring:{cx:ring.cx, cy:ring.cy, r:ring.r, bottom:ring.cy + ring.r, fadeEnd:ring.fadeEnd},
       paintRing:ring.paint,
       clockBand:H * 0.17, buttonBand:ring.bandTop
     };
+  }
+
+  /* 顕れ — 額の中で絵を 0→1 に上げながら描き直す。地と蝕環は最初から出ているので消えない。
+     開幕は600ms、選び直しは350ms。**顕れ終わるまで保存は有効にしない**
+     （途中の一枚を焼いて渡さないため）。 */
+  var OPEN_MS = 600, SWAP_MS = 350;
+  var revealRAF = 0, revealSkip = false;
+  var reveal = window.__yojitateReveal = { alpha:0, running:false };   // 検査が読む（画面には出ない）
+
+  function revealArt(img, dur, token){
+    if (revealRAF) { cancelAnimationFrame(revealRAF); revealRAF = 0; }
+    revealSkip = false;
+    reveal.running = true;
+    var t0 = 0;
+    function step(now){
+      if (token !== seq) { revealRAF = 0; reveal.running = false; return; }
+      if (!t0) t0 = now;
+      var p = revealSkip ? 1 : Math.min(1, (now - t0) / dur);
+      var a = p >= 1 ? 1 : p * (2 - p);        // 出はじめを速く（闇から浮かぶ形）
+      reveal.alpha = a;
+      frame(img, a);
+      if (p < 1) { revealRAF = requestAnimationFrame(step); return; }
+      revealRAF = 0;
+      reveal.running = false;
+      bake(token);                              // 顕れ終わってから焼く
+    }
+    revealRAF = requestAnimationFrame(step);
   }
 
   /* ---------- ⑥ 保存する一枚を先に焼いておく ---------- */
@@ -689,7 +982,9 @@
     if (navigator.canShare && baked instanceof File && navigator.canShare({files:[baked]})) {
       navigator.share({files:[baked]}).then(function(){
         put('保存（共有シート）', 'ok', '共有シートまで開いた');
+        openTips();                       // 通ったときだけ案内を出す
       }).catch(function(e){
+        // 取り消し＝保存していない。案内は出さない
         if (e && e.name === 'AbortError') put('保存（共有シート）', 'ok', '開いたが取り消された');
         else { put('保存（共有シート）', 'ng', e && e.name); fallbackDownload(); }
       });
@@ -707,6 +1002,7 @@
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
       put('保存（download）', 'ok', 'ファイルとして落とした（写真アプリには入らない）');
+      openTips();
     } catch(e) {
       // 3) 長押しの案内
       put('保存（download）', 'ng', e && e.message);
@@ -714,43 +1010,85 @@
     }
   }
 
+  /* ---------- ⑦-b 保存が通ったあとの札（#picker と同じ「開いて閉じる札」の型） ----------
+     常設の長文をやめて、**保存が通った人にだけ**同じ文言を出す。
+     一度閉じても次の保存でまた出す（手順は忘れるもの）。 */
+  var tips = document.getElementById('tips');
+  (function buildTips(){
+    var src = document.getElementById('howtoText');
+    if (!src) return;
+    var clone = src.cloneNode(true);       // 文言の正本は「壁紙にする手順」の中の1か所だけ
+    clone.removeAttribute('id');
+    document.getElementById('tipsBody').appendChild(clone);
+  })();
+  function openTips(){ tips.classList.add('show'); }
+  function closeTips(){ tips.classList.remove('show'); }
+  document.getElementById('tips-close').addEventListener('click', closeTips);
+  tips.addEventListener('click', function(e){ if (e.target === tips) closeTips(); });
+  document.addEventListener('keydown', function(e){
+    if (e.key !== 'Escape') return;
+    if (picker.classList.contains('show')) closePicker();
+    else if (tips.classList.contains('show')) closeTips();
+  });
+
   /* ---------- ⑧ 組み立て ---------- */
   // 選び直しは連打される。古い読み込みが後から返って新しい絵を上書きしないよう、番号で締める。
   var seq = 0;
 
-  function choose(id){ if (id !== curId) { curId = id; refresh(); } }
-  function chooseDepth(depth){ if (depth !== curDepth) { curDepth = depth; refresh(); } }
+  function choose(id){
+    if (id === curId) return;
+    curId = id;
+    refresh(SWAP_MS);
+    centerStrip();
+  }
+  function chooseDepth(depth){
+    clearTimeout(holdT);
+    if (depth === curDepth) { paintDepth(curDepth); return; }
+    curDepth = depth;
+    refresh(SWAP_MS);
+  }
 
   function paintChrome(){
     var s = spiritOf(curId);
-    document.getElementById('chooserIcon').src = iconURL(s.id);
     document.getElementById('chooserName').textContent = s.name;
     document.getElementById('chooserTag').textContent = s.kana + '／' + s.sato + '・' + s.gogyo;
     for (var id in pickButtons) {
       pickButtons[id].setAttribute('aria-pressed', id === curId ? 'true' : 'false');
     }
-    depthButtons.forEach(function(b, i){
-      b.setAttribute('aria-pressed', (i + 1) === curDepth ? 'true' : 'false');
-    });
+    for (var sid in stripButtons) {
+      stripButtons[sid].setAttribute('aria-pressed', sid === curId ? 'true' : 'false');
+    }
+    paintDepth(curDepth);
   }
 
-  function refresh(){
+  // 読み込みが遅いときの保険。**5秒たっても絵が来なければ**「顕れています…」を出す。
+  // それより短い待ちは黙って待つ（顕れの前に待ちの札を見せない）。
+  var WAIT_NOTICE = 5000;
+  var waitT = 0;
+
+  function refresh(dur){
     var token = ++seq;
     paintChrome();
     writePick({id:curId, depth:curDepth});
     saveBtn.disabled = true;
-    frameEl.classList.add('loading');
+    baked = null;
+    clearTimeout(waitT);
+    waitT = setTimeout(function(){
+      if (token === seq) frameEl.classList.add('loading');
+    }, WAIT_NOTICE);
     loadFuda(curId, curDepth).then(function(img){
       if (token !== seq) return;                 // 読んでいる間に選び直された
+      clearTimeout(waitT);
       frameEl.classList.remove('loading');
       if (!corsReported) {
         put('素材蔵から crossOrigin で読む', 'ok',
             img.width + '×' + img.height + ' / ' + fudaURL(curId, curDepth));
       }
-      frame(img);
-      bake(token);
+      revealArt(img, dur == null ? SWAP_MS : dur, token);
+      prefetchRest(curId, curDepth, token);
     }).catch(function(e){
       if (token !== seq) return;
+      clearTimeout(waitT);
       frameEl.classList.remove('loading');
       put('素材蔵から crossOrigin で読む', 'ng', e.message);
     });
@@ -799,7 +1137,9 @@
     });
   })();
 
-  refresh();
+  paintGround();          // 0ms の額 — 地と蝕環だけ。絵はこのあと顕れる
+  refresh(OPEN_MS);
+  centerStrip();
 })();
 </script>
 </body>
