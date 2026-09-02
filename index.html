@@ -51,9 +51,26 @@
   body.nofade .rise{transition:none}   /* 画面タップで飛ばしたときは即座に立ち上げる */
 
   .stage{
+    position:relative;   /* 題の顕れ（.daimei）の座標の基準 */
     background:var(--night-2);border-radius:10px;padding:12px;margin-bottom:16px;
     text-align:center;
   }
+  /* 題の顕れ（第5便その2・2026-09-02 オーナー裁定A）。
+     開幕の1.2秒、額の**時計の帯**（上17%・壁紙で時計が立つ場所）に題字を大きく浮かべ、
+     部品が立つときに小見出し（h1）の位置へ縮んで収まる。タップは増えない。
+     DOM なので保存画像には入らない。動かすのは transform と opacity だけ。座標は JS が実測して入れる。 */
+  .daimei{
+    position:absolute;left:0;top:0;margin:0;z-index:2;
+    font-size:32px;line-height:1;letter-spacing:.08em;color:var(--kindei);font-weight:400;
+    white-space:nowrap;pointer-events:none;opacity:0;
+    transform-origin:0 0;
+    transition:opacity 300ms ease;
+  }
+  .daimei.show{opacity:1}
+  /* 着地は動き（700ms）より先に消える（350ms）。副題の上を通る後半で残像が文字に重ならないように */
+  .daimei.land{transition:transform 700ms ease,opacity 350ms ease;opacity:0}
+  body.nofade .daimei{transition:none}
+  .daimei.gone{display:none}
   /* 押し所が画面外へ出ないよう、プレビューの背は viewport で頭打ちにする
      （SHITSURAE.md §6「結果カードの背を伸ばさない」）。
      第1便で下に選ぶ帯が2本増えたぶん 52vh → 44vh へ譲り、第5便で注記を畳んだぶん戻した。
@@ -294,6 +311,7 @@
 <p class="sub rise">札絵を、その端末の夜に合わせて額装します</p>
 
 <div class="stage">
+  <div class="daimei" id="daimei" aria-hidden="true">夜じたて</div>
   <div class="frame" id="frame">
     <canvas id="cv"></canvas>
     <div class="guide top rise"><span>時計の帯</span></div>
@@ -473,7 +491,29 @@
      この段は他のどこよりも先に置く——ここより上で転ぶと、部品が伏せたまま起き上がらない。 */
   var RISE_AT = 1200, UNLOCK_AT = 1260;
   var introDone = false, tRise = 0, tUnlock = 0;
-  function riseChrome(){ document.body.classList.remove('veiled'); }
+  /* 題の顕れ。額の時計の帯の真ん中に据え、立ち上がりの時刻に h1 の位置へ縮めて仕舞う。
+     座標は実測（端末ごとに額の寸法が違う）。frameEl はこの下で作られるが、呼ぶのは rAF の中なので間に合う。 */
+  var daimei = document.getElementById('daimei');
+  function placeDaimei(){
+    var st = daimei.parentNode.getBoundingClientRect();
+    var fr = frameEl.getBoundingClientRect();
+    // 額の幅から大きさを決める（背の低い端末では額が細く、32px だと額を横に越える）。24〜32px
+    daimei.style.fontSize = Math.max(24, Math.min(32, fr.width * 0.19)) + 'px';
+    daimei.style.left = (fr.left - st.left + (fr.width - daimei.offsetWidth) / 2) + 'px';
+    daimei.style.top  = (fr.top  - st.top  + fr.height * 0.17 / 2 - daimei.offsetHeight / 2) + 'px';
+    daimei.classList.add('show');
+  }
+  function landDaimei(){
+    if (daimei.classList.contains('land')) return;
+    var h1 = document.querySelector('h1');
+    var a = daimei.getBoundingClientRect(), b = h1.getBoundingClientRect();
+    var sc = parseFloat(getComputedStyle(h1).fontSize) / parseFloat(getComputedStyle(daimei).fontSize);
+    daimei.style.transform = 'translate(' + (b.left - a.left) + 'px,' + (b.top - a.top) + 'px) scale(' + sc + ')';
+    daimei.classList.add('land');
+    setTimeout(function(){ daimei.classList.add('gone'); }, 760);   // 立ち上がり（700ms）が済んでから仕舞う
+  }
+  requestAnimationFrame(placeDaimei);
+  function riseChrome(){ document.body.classList.remove('veiled'); landDaimei(); }
   function unlockChrome(){ document.body.classList.remove('locked'); introDone = true; }
   function skipIntro(){
     if (introDone) return;

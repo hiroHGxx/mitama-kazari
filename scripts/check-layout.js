@@ -464,7 +464,18 @@ async function main() {
             op: +getComputedStyle(document.querySelector('h1')).opacity,
             // 押せるかは pointer-events だけでなく、実際にその点で拾えるかで見る
             hit: document.elementFromPoint(Math.round(r.left + r.width / 2),
-                                           Math.round(r.top + r.height / 2)) === s
+                                           Math.round(r.top + r.height / 2)) === s,
+            // 題の顕れ: 額の時計の帯（上17%）に立っているか／仕舞われたか
+            dm: (() => {
+              const d = document.getElementById('daimei');
+              const f = document.getElementById('frame').getBoundingClientRect();
+              const rr = d.getBoundingClientRect(), cs = getComputedStyle(d);
+              return {
+                op: +cs.opacity, disp: cs.display,
+                inBand: rr.top >= f.top - 1 && rr.bottom <= f.top + f.height * 0.17 + 1
+                     && rr.left >= f.left - 1 && rr.right <= f.right + 1
+              };
+            })()
           };
         };
         document.addEventListener('DOMContentLoaded', () => {
@@ -495,6 +506,11 @@ async function main() {
       judge(s.snaps.t1400.pe !== 'none' && s.snaps.t1400.hit,
         '1260ms 以降は押せる', `t=${s.snaps.t1400.t}ms / pointer-events ${s.snaps.t1400.pe}`);
       judge(s.snaps.t2200.op > 0.99, '1900ms 以降は完全不透明', `opacity ${s.snaps.t2200.op}`);
+      judge(s.snaps.t600.dm.op > 0.9 && s.snaps.t600.dm.inBand,
+        '600ms は題字が額の時計の帯に立っている',
+        `opacity ${s.snaps.t600.dm.op} / 帯の中 ${s.snaps.t600.dm.inBand}`);
+      judge(s.snaps.t2200.dm.disp === 'none', '1900ms 以降は題字が仕舞われている',
+        `display ${s.snaps.t2200.dm.disp}`);
       judge(s.log.length > 0 && s.log.every(e => e.alpha === 1 && e.running === false),
         '絵の顕れが終わってから保存が有効になる',
         s.log.map(e => `t=${e.t}ms alpha=${e.alpha}`).join(' / ') || '一度も有効にならなかった');
