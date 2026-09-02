@@ -13,6 +13,11 @@
 <meta property="og:image:width" content="2400">
 <meta property="og:image:height" content="1200">
 <meta name="twitter:card" content="summary_large_image">
+<!-- 書体（第7便・見立て問3）: 兄弟6作と同じ2書体。題・名・釦は Shippori Mincho B1、補助の文字は M PLUS Rounded 1c。
+     外部から読むのはこの書体だけ（素材蔵の絵とは別の種類の依存だが、系の外ではない）。届かない端末は端末の書体に落ちる（display=swap） -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@400;500;700&family=M+PLUS+Rounded+1c:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 fill=%22%23131320%22/%3E%3Crect x=%229%22 y=%223%22 width=%2214%22 height=%2226%22 rx=%223%22 fill=%22%231B1B2E%22/%3E%3Cpath d=%22M10.5 23.5a5.5 5.5 0 1 1 9.6 2.4%22 fill=%22none%22 stroke=%22%23D9A94C%22 stroke-width=%221.7%22 stroke-linecap=%22round%22/%3E%3C/svg%3E">
 <style>
   :root{
@@ -33,7 +38,7 @@
   body{
     background:var(--night);
     color:var(--ink);
-    font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
+    font-family:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
     -webkit-text-size-adjust:100%;
     overflow:hidden;              /* 第6便: 1画面のアプリ。頁は縦に流れない */
   }
@@ -67,7 +72,7 @@
     width:44px;height:44px;padding:0;
     border:none;border-radius:5px;background:transparent;
     color:var(--kindei);font-size:20px;line-height:1;
-    font-family:system-ui,sans-serif;
+    font-family:"M PLUS Rounded 1c",system-ui,sans-serif;
   }
   .menubtn:active{background:rgba(217,169,76,.16)}
 
@@ -120,12 +125,8 @@
   .guide{position:absolute;left:0;right:0;pointer-events:none}
   .guide.top{top:0;height:17%;border-bottom:1px dashed rgba(217,169,76,.5)}
   .guide.bottom{bottom:0;height:12%;border-top:1px dashed rgba(217,169,76,.5)}
-  .guide span{
-    position:absolute;right:6px;font-size:12px;color:var(--kindei);
-    font-family:system-ui,sans-serif;opacity:.85;
-  }
-  .guide.top span{bottom:4px}
-  .guide.bottom span{top:4px}
+  /* 札名（「時計の帯」「釦の帯」）は第7便で絵の上から外した（見立て問2: 当たり線の付箋が客の見る面に居座っていた）。
+     線だけ残す。名は ≡ の脚注に */
   /* 顕れ待ち。札絵は100〜350KBあるので、待っていることを黙らせない */
   .frame .waiting{
     position:absolute;inset:0;display:none;align-items:center;justify-content:center;
@@ -133,6 +134,20 @@
     line-height:1;
   }
   .frame.loading .waiting{display:flex}
+  /* 届かなかったとき（第7便・目付 R-1）: 黙って保存を伏せたままにしない。額の中で言い、読み直す口を置く */
+  .frame .failed{
+    position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+    padding:16px;background:rgba(19,19,32,.78);color:var(--ink);text-align:center;
+    font-size:13px;line-height:1.6;letter-spacing:.04em;
+  }
+  .frame.failed .failed{display:flex}
+  .frame .failed p{margin:0}
+  .frame .failed small{display:block;margin-top:6px;font-size:12px;color:var(--ink-dim);font-family:"M PLUS Rounded 1c",system-ui,sans-serif}
+  .frame .failed button{
+    min-height:36px;min-width:120px;padding:0 16px;border-radius:5px;
+    border:1px solid var(--kindei);background:transparent;color:var(--kindei-hi);font-size:13px;letter-spacing:.08em;
+  }
+  .frame .failed button:active{background:rgba(217,169,76,.16)}
 
   button{
     font-family:inherit;-webkit-tap-highlight-color:transparent;cursor:pointer;
@@ -160,9 +175,14 @@
   .save[disabled]{opacity:.4;cursor:default}
   /* 二次創作の一行（KITAN.md「画面にも1行」）。これが下にあるぶん、
      「写真に保存」の下端は画面のいちばん下に触れない（SHITSURAE 末尾）。 */
+  /* 芯の一行（第7便・見立て問8）: 開いて3秒の画面が「この端末にぴったり合う」を言う。寸法は実測（#size= の上書きも反映） */
+  .fitline{
+    margin:0 0 6px;font-size:12px;line-height:1.4;color:var(--ink-dim);text-align:center;letter-spacing:.04em;
+    font-family:"M PLUS Rounded 1c",system-ui,sans-serif;
+  }
   .credit{
     margin:6px 0 0;font-size:12px;line-height:1.5;color:var(--ink-dim);
-    font-family:system-ui,sans-serif;text-align:center;
+    font-family:"M PLUS Rounded 1c",system-ui,sans-serif;text-align:center;
   }
 
   /* 名札。下の面の一行目。押すと「開いて閉じる札」が開く（SHITSURAE §7・既にある型を使う）。
@@ -176,10 +196,10 @@
   .chooser:active{background:var(--night-2)}
   .chooser .nm{font-size:15px;color:var(--ink);white-space:nowrap;flex:none}
   .chooser .tg{
-    flex:1;min-width:0;font-size:12px;color:var(--ink-dim);font-family:system-ui,sans-serif;
+    flex:1;min-width:0;font-size:12px;color:var(--ink-dim);font-family:"M PLUS Rounded 1c",system-ui,sans-serif;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   }
-  .chooser .arrow{font-size:12px;color:var(--kindei);flex:none;font-family:system-ui,sans-serif}
+  .chooser .arrow{font-size:12px;color:var(--kindei);flex:none;font-family:"M PLUS Rounded 1c",system-ui,sans-serif}
 
   /* 顔の列（左）。第6便その2で横の帯から**縦の列**にした。29柱を縦に流し見る。
      ≡（左上44px）の下から、下の面の上まで。里の境に隙間をひとつ入れて、
@@ -203,7 +223,7 @@
   }
   .strip button img{width:44px;height:44px;object-fit:contain;border-radius:4px;}
   .strip button span{
-    font-size:12px;line-height:1.25;font-family:system-ui,sans-serif;
+    font-size:12px;line-height:1.25;font-family:"M PLUS Rounded 1c",system-ui,sans-serif;
     white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;
   }
   .strip button[aria-pressed="true"]{
@@ -223,7 +243,7 @@
   }
   .depth-cap{
     flex:none;margin:0 0 4px;font-size:12px;line-height:1.2;text-align:center;
-    color:var(--ink-dim);font-family:system-ui,sans-serif;letter-spacing:.06em;
+    color:var(--ink-dim);font-family:"M PLUS Rounded 1c",system-ui,sans-serif;letter-spacing:.06em;
   }
   .depth{
     flex:1 1 auto;min-height:0;
@@ -234,12 +254,12 @@
     flex:1 1 0;min-width:24px;min-height:24px;padding:0;
     border-radius:5px;border:1px solid var(--line);
     background:var(--night);color:var(--ink-dim);
-    font-family:system-ui,sans-serif;font-size:12px;letter-spacing:.02em;
+    font-family:"M PLUS Rounded 1c",system-ui,sans-serif;font-size:12px;letter-spacing:.02em;
   }
   .depth button[aria-pressed="true"]{color:#1a1408}
   .depth-note{
     margin:0 0 10px;font-size:12px;line-height:1.7;color:var(--ink-dim);
-    font-family:system-ui,sans-serif;text-align:left;
+    font-family:"M PLUS Rounded 1c",system-ui,sans-serif;text-align:left;
   }
   .depth-note b{color:var(--kindei);font-weight:400}
 
@@ -274,7 +294,7 @@
   .pick-body{overflow-y:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:0 4px}
   .pick-sato{
     margin:14px 2px 6px;font-size:12px;color:var(--ink-dim);letter-spacing:.14em;
-    font-family:system-ui,sans-serif;text-align:left;
+    font-family:"M PLUS Rounded 1c",system-ui,sans-serif;text-align:left;
     border-bottom:1px solid var(--line);padding-bottom:4px;
   }
   .pick-body .pick-sato:first-child{margin-top:0}
@@ -289,7 +309,7 @@
   }
   .pick-grid button img{width:44px;height:44px;object-fit:contain}
   .pick-grid button span{
-    font-size:12px;line-height:1.3;font-family:system-ui,sans-serif;
+    font-size:12px;line-height:1.3;font-family:"M PLUS Rounded 1c",system-ui,sans-serif;
     white-space:nowrap;
   }
   .pick-grid button[aria-pressed="true"]{
@@ -326,7 +346,7 @@
   details[open] summary{margin-bottom:10px}   /* 閉じているときは背を足さない */
   summary{
     font-size:13px;color:var(--ink-dim);cursor:pointer;list-style:none;
-    font-family:system-ui,sans-serif;min-height:24px;display:flex;align-items:center;
+    font-family:"M PLUS Rounded 1c",system-ui,sans-serif;min-height:24px;display:flex;align-items:center;
   }
   summary::-webkit-details-marker{display:none}
   summary::before{content:"\25B8 ";color:var(--kindei);margin-right:4px}
@@ -342,7 +362,7 @@
   .na{color:var(--ink-dim)}
   .alt{color:var(--kindei)}
   footer{margin:0;font-size:12px;color:var(--ink-dim);line-height:1.8;
-    font-family:system-ui,sans-serif}
+    font-family:"M PLUS Rounded 1c",system-ui,sans-serif}
 
   /* 背の低い画面では縦の余白だけを詰める。横の幅指定は壊さない（SHITSURAE §6）。
      第6便では額が「画面 − 引き出し」を取るので、詰めたぶんがそのまま額の大きさになる。 */
@@ -372,9 +392,13 @@
         <!-- 題字は額の時計の帯の中に常設。開幕の「題の顕れ」は同じ場所で大→小 -->
         <h1 class="rise">夜じたて</h1>
         <div class="daimei" id="daimei" aria-hidden="true">夜じたて</div>
-        <div class="guide top rise"><span>時計の帯</span></div>
-        <div class="guide bottom rise"><span>釦の帯</span></div>
+        <div class="guide top rise" aria-hidden="true"></div>
+        <div class="guide bottom rise" aria-hidden="true"></div>
         <div class="waiting">顕れています…</div>
+        <div class="failed" role="alert">
+          <p>札絵が届きませんでした<br><small>回線を確かめてください。別の柱や段を選んでも読み直します</small></p>
+          <button type="button" id="retry">読み直す</button>
+        </div>
       </div>
     </div>
 
@@ -393,6 +417,7 @@
       <span class="arrow">名前で選ぶ ▾</span>
     </button>
 
+    <p class="fitline">この端末（<span id="fitSize">—</span>）の壁紙に、ぴったり仕立てます</p>
     <button id="save" class="save" disabled>写真に保存</button>
     <p class="credit">月蝕綺譚の二次創作です。公式とは関係ありません</p>
   </div>
@@ -466,7 +491,7 @@
       </details>
 
       <footer>
-        破線は保存画像には入りません。画面で位置を見るための目安です。<br>
+        破線は保存画像には入りません。画面で位置を見るための目安で、上の線が時計の帯（上17%）、下の線が釦の帯（下12%）です。<br>
         この道具は月蝕綺譚の二次創作で、公式とは関係ありません。絵は公式の素材蔵から読み込み、
         この端末の中で額装しています。原本を配ってはいません。
       </footer>
@@ -1228,12 +1253,15 @@
   var WAIT_NOTICE = 5000;
   var waitT = 0;
 
+  document.getElementById('retry').addEventListener('click', function(){ refresh(SWAP_MS); });
+
   function refresh(dur){
     var token = ++seq;
     paintChrome();
     writePick({id:curId, depth:curDepth});
     saveBtn.disabled = true;
     baked = null;
+    frameEl.classList.remove('failed');
     clearTimeout(waitT);
     waitT = setTimeout(function(){
       if (token === seq) frameEl.classList.add('loading');
@@ -1252,6 +1280,7 @@
       if (token !== seq) return;
       clearTimeout(waitT);
       frameEl.classList.remove('loading');
+      frameEl.classList.add('failed');            // 額の中で言う（保存は伏せたまま＝途中の一枚を渡さない）
       put('素材蔵から crossOrigin で読む', 'ng', e.message);
     });
   }
@@ -1263,6 +1292,7 @@
     var key = W + 'x' + H;
     var box = document.getElementById('dailyBox');
     document.getElementById('dailySize').textContent = W + ' × ' + H;
+    document.getElementById('fitSize').textContent = W + ' × ' + H;   // 芯の一行（保存の上）にも同じ寸法
     if (PUBLISHED.indexOf(key) < 0) return;          // 合う寸法が無いなら出さない（合わない絵を渡さない）
     var url = 'https://github.com/hiroHGxx/yo-jitate/releases/download/daily/yo-jitate-' + key + '.jpg';
     document.getElementById('dailyUrl').textContent = url;

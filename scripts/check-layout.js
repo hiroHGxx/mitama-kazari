@@ -815,6 +815,56 @@ async function main() {
         errors.join(' / '));
       await page.close();
     }
+    /* ---------- 第7便 健診の手当て（目付 R-1・見立て問2/3/8） ---------- */
+    console.log('\n【健診の手当て（第7便）】');
+    {
+      const page = await browser.newPage();
+      await page.setViewport({ width: 393, height: 740, deviceScaleFactor: 2 });
+      let block = true;
+      await page.setRequestInterception(true);
+      page.on('request', r => (block && r.url().includes('kura.vibe.co.jp')) ? r.abort() : r.continue());
+      await page.goto(base + '#size=1179x2556', { waitUntil: 'domcontentloaded' });
+      await page.waitForFunction(() => document.getElementById('frame').classList.contains('failed'), { timeout: 15000 }).catch(() => {});
+      const f = await page.evaluate(() => {
+        const fr = document.getElementById('frame');
+        const box = fr.querySelector('.failed');
+        const btn = document.getElementById('retry');
+        const r = btn.getBoundingClientRect();
+        const sizes = [...box.querySelectorAll('*')]
+          .filter(el => el.children.length === 0 && el.textContent.trim())
+          .map(el => parseFloat(getComputedStyle(el).fontSize));
+        return {
+          failed: fr.classList.contains('failed'), shown: getComputedStyle(box).display !== 'none',
+          text: box.textContent.replace(/\s+/g, ' ').trim().slice(0, 30),
+          retry: [r.width, r.height], minFont: Math.min(...sizes),
+          saveDisabled: document.getElementById('save').disabled
+        };
+      });
+      judge(f.failed && f.shown, '素材蔵に届かないと額の中で言う', f.text);
+      judge(Math.min(...f.retry) >= 24, '「読み直す」が24px以上', `${f.retry[0].toFixed(0)}×${f.retry[1].toFixed(0)}px`);
+      judge(f.minFont >= 12, '言い分の文字が12px以上', `最小 ${f.minFont}px`);
+      judge(f.saveDisabled, '届いていない間は保存を伏せたまま');
+      block = false;
+      await page.click('#retry');
+      let recovered = true;
+      try {
+        await page.waitForFunction(() => !document.getElementById('save').disabled
+          && !document.getElementById('frame').classList.contains('failed'), { timeout: 30000 });
+      } catch (e) { recovered = false; }
+      judge(recovered, '「読み直す」で届けば保存が有効になり、言い分が消える');
+      const g = await page.evaluate(() => ({
+        guideSpans: document.querySelectorAll('#frame .guide span').length,
+        fit: document.getElementById('fitSize').textContent,
+        fitPx: parseFloat(getComputedStyle(document.querySelector('.fitline')).fontSize),
+        mplus: document.fonts.check('12px "M PLUS Rounded 1c"'),
+        shippori: document.fonts.check('16px "Shippori Mincho B1"')
+      }));
+      judge(g.guideSpans === 0, '額の上に札名（時計の帯・釦の帯）が無い', `${g.guideSpans}件`);
+      judge(g.fit === '1179 × 2556' && g.fitPx >= 12, '芯の一行に端末の寸法が入る', `「${g.fit}」 ${g.fitPx}px`);
+      judge(g.mplus && g.shippori, '2書体が読み込まれている（Shippori Mincho B1・M PLUS Rounded 1c）',
+        `mplus ${g.mplus} / shippori ${g.shippori}`);
+      await page.close();
+    }
   } finally {
     await browser.close();
     await new Promise(r => server.close(r));   // 立てたサーバーはここで閉じる

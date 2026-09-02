@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>夜じたて UT分析評価レポート</title>
+  <style>
+    :root { color-scheme:light; --ink:#16202a; --muted:#667085; --line:#d6dbe1; --paper:#fff; --soft:#f4f6f8; --accent:#2457d6; --high:#b42318; --medium:#9a6700; --low:#157347; }
+    * { box-sizing:border-box; }
+    body { margin:0; overflow-x:hidden; background:var(--soft); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; line-height:1.65; }
+    main { width:min(1180px,calc(100% - 32px)); max-width:calc(100vw - 32px); margin:32px auto; background:var(--paper); padding:clamp(24px,5vw,60px); border:1px solid var(--line); border-radius:16px; }
+    h1 { font-size:clamp(30px,5vw,48px); line-height:1.12; margin:0 0 12px; }
+    h2 { margin-top:56px; padding-bottom:10px; border-bottom:2px solid var(--ink); }
+    h3 { margin-top:30px; }
+    .meta { display:flex; flex-wrap:wrap; gap:8px 20px; color:var(--muted); }
+    .summary { margin:30px 0; padding:22px; background:#eef3ff; border-left:4px solid var(--accent); border-radius:10px; }
+    .card { margin:18px 0; padding:20px; border:1px solid var(--line); border-radius:12px; break-inside:avoid; }
+    .high { color:var(--high); font-weight:750; } .medium { color:var(--medium); font-weight:750; } .low { color:var(--low); font-weight:750; }
+    table { width:100%; border-collapse:collapse; margin:18px 0 30px; font-size:14px; }
+    th,td { padding:11px; border:1px solid var(--line); vertical-align:top; text-align:left; }
+    th { background:#edf0f4; }
+    .muted { color:var(--muted); }
+    code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.92em; }
+    h1,h2,h3,p,.summary,.meta span { overflow-wrap:anywhere; }
+    footer { margin-top:56px; color:var(--muted); font-size:13px; }
+    @media (max-width:800px) { table { display:block; overflow-x:auto; } th,td { min-width:150px; } }
+    @media print { body { background:#fff; } main { width:100%; margin:0; border:0; padding:24px; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>夜じたて UT分析評価レポート</h1>
+    <div class="meta">
+      <span>UT実施日: 2026-09-03</span><span>モード: hybrid</span><span>参加者: 人間0名／AI観点1（AI-P01・検品担当が代行）</span><span>分析日: 2026-09-03</span><span>run-id: n4v8</span><span>分析: 検品担当（結）</span>
+    </div>
+  </header>
+
+  <div class="summary">
+    <strong>本レポートの立場:</strong> 観察事実から課題を構造化し、根本課題を同定する。観察、解釈、改善案を混同しない。
+    改善の論点は最後に「次工程への論点」として分けて書く。<strong>人間の参加者は0名</strong>で、頻度の主張は一切しない。
+    ただし境界条件の追試（B-4・B-7）は再現手順が明記された直接測定であり、そのまま使う。
+  </div>
+
+  <section><h2>A. 分析方法とデータ範囲</h2>
+  <ul>
+    <li><strong>入力</strong>: <code>session.json</code>（closed・13件）／<code>results.jsonl</code>（13行）／<code>UT結果ログ_2026-09-03.md</code>／シナリオ2種（<code>UTシナリオ_20260903_*.html</code>）／<code>docs/SPEC.md</code>（§0・§2・§7・§7.7）／<code>README.md</code>／<code>docs/DEVELOPMENT.md</code> 末尾（第5便〜第6便その2）／<code>docs/SHORTCUT.md</code>／<code>index.html</code>（<code>centerStrip()</code>・<code>choose()</code>・<code>refresh()</code>・<code>loadFuda()</code>・<code>revealArt()</code>）／観察の生データ <code>obs-all.json</code>・追試 <code>obs-b4-recheck.json</code>・<code>obs-b7-recheck.json</code>。</li>
+    <li><strong>整合</strong>: session の完了ID 12（+skipped 1）と results のID集合13は一致。participant は AI-P01 のみで匿名。証拠パスは全件 run ディレクトリに実在（付録）。cleanup は completed で本UT自体は問題に含めない（本番originに触れていない）。</li>
+    <li><strong>制約</strong>: 実機の指・共有シート・体感速度は原理的に演じられないため未実施（C-9・「実機に回す一覧」参照）。人の初見の言語化・迷いも同様に未実施。<strong>同一 browser context 内で各シナリオを順に実行したため、localStorage の控えが前のシナリオから引き継がれた</strong>（B-5・B-6・B-7 の開始状態に影響。コア判定への影響は無いことを確認済み・詳細は結果ログの「制約」節）。観察スクリプトは1回目にCDPのプロトコルタイムアウトで中断し（B-7内部の待ちに上限が無かったため）、上限12秒を追加し2回目で完走した。</li>
+    <li><strong>枠組み</strong>: Nielsen 10（UI の課題だけに付ける）／効果・効率・満足。前回レポートは無い（本作は初回のUT）。<code>scripts/check-layout.js</code>（機械検査150項目・全緑・UT着手前に単独実行）は別観点（額装の幾何・仕様どおりの受入）であり、本UTと補完関係にある（重複ではない）。</li>
+  </ul></section>
+
+  <section><h2>B. エグゼクティブサマリー</h2>
+  <p>13シナリオ中、完了/受入OKが10件、摩擦ありが2件（B-4／E-13）、実機のみのため未実施が1件（C-9）。<strong>もっとも影響が大きいのはE-13</strong>——札絵の配信元（素材蔵 <code>kura.vibe.co.jp</code>）に届かない状態で開くと、開幕自体は通常どおり進むが、その後は<strong>「写真に保存」ボタンが恒久的に押せないまま、画面のどこにも目に見えるエラー表示が一切出ない</strong>。唯一の記録は左上≡の札の中の<code>&lt;details&gt;</code>要素（「この端末で通ったこと」）に埋もれた1行だけで、これは既定で閉じている。5秒の読み込み保険（<code>WAIT_NOTICE</code>）も、ネットワーク遮断時のエラーが5秒よりずっと早く届くため一度も発火しない。ユーザーからは「絵が出ない・保存できない・なぜかは分からない」という状態にしか見えない。</p>
+  <p><strong>次に見つかったのはB-4</strong>——左の顔の列（29柱）で選んだ柱を中央へ寄せる仕組み（<code>centerStrip()</code>・<code>scrollIntoView({block:'center'})</code>）は、リストの中ほどの柱では誤差0.5pxとほぼ完璧に機能するが、<strong>先頭・末尾に近い柱ではスクロール可能範囲の限界（0またはmaxScrollTop）に張り付き、中央へ寄る余地が無い</strong>。実測では最後の1柱（根の国・シンラ）と最初の1柱（甲賀・咲耶）でともに295.5pxのずれが生じた。これは<code>scrollIntoView</code>のブラウザ標準の挙動であり、実装の不具合というより<strong>リストの端という条件で仕様の記述（「帯はその柱を中央に寄せる」）が完全には成立しない</strong>という構造的な事実である。</p>
+  <p>それ以外は仕様どおりに動いている: 開幕の時間割（1260ms前後の解禁・題字の顕れと収まり）はミリ秒単位で設計値と一致した・タップで開幕を飛ばす動きは63ms以内に完了する・SE（375×560）でも押し所と文字の床は崩れない・名前で選ぶ札は里ごとの見出し付きで正しく開閉する・階梯のタップとなぞりはどちらも正しい段に落ち着く・「写真に保存」後の札は3つの結末（取り消し／共有成立／download経路）を正しく出し分ける・≡の札の中身（手順・毎朝のURLコピー・通ったことの記録・脚注）はすべて揃っている・再訪で控えが正しく復元される・localStorageが使えない環境でも最後まで立ち上がる。</p>
+  <p>なお、階梯をなぞったときの「先読みで2回目以降が速くなる」という体感速度差は、本UTの計測方法（saveボタンの<code>disabled</code>解除までの時間）では検出できなかった（独立した環境で測り直した3値の差は20ms程度）。これは<strong>先読みが効いていないという意味ではなく</strong>、固定長の顕れ演出（<code>SWAP_MS</code>）がこの指標を支配しているために、ネットワーク取得時間の短縮分がこの測り方では見えない、という測定上の限界である。</p>
+  </section>
+
+  <section><h2>C. 観察結果の分布</h2>
+  <table><thead><tr><th>状態</th><th>件数</th><th>シナリオ</th></tr></thead><tbody>
+  <tr><td>完了 / 受入OK</td><td>10</td><td>A-1 / A-2 / A-3 / B-5 / B-6 / B-7 / C-8 / D-10 / E-11 / E-12</td></tr>
+  <tr><td>摩擦あり完了</td><td>2</td><td>B-4（受入ng）／E-13（受入 対象外＝仕様に明記が無い挙動）</td></tr>
+  <tr><td>skipped（実機のみ・未実施）</td><td>1</td><td>C-9</td></tr>
+  <tr><td>未実施の次元</td><td>—</td><td>人の言語化・実指のスワイプ・共有シートの実物・体感速度・safe-area</td></tr>
+  </tbody></table>
+  <table><thead><tr><th>Nielsen / 分類</th><th>件数</th></tr></thead><tbody>
+  <tr><td>#1 可視性（システムの状態が見えない）</td><td>1（E-13）</td></tr>
+  <tr><td>#2 実世界との一致（画面上の言葉と実際の挙動）</td><td>0</td></tr>
+  <tr><td>非UI（ブラウザ標準機能の境界条件）</td><td>1（B-4）＝番号を付けない</td></tr>
+  <tr><td>該当なし（想定どおり）</td><td>10</td></tr>
+  <tr><td>未実施</td><td>1（C-9）</td></tr>
+  </tbody></table></section>
+
+  <section><h2>D. 根本課題</h2>
+  <article class="card"><h3>R-1. 素材蔵に届かないと、保存ボタンが恒久的に押せないまま、画面上に見えるエラーが一切出ない</h3>
+    <p><span class="high">確信度: high</span> — 直接観察: <code>kura.vibe.co.jp</code>宛のリクエストを全件遮断して開いたところ、2秒後・9秒後のどちらでも <code>save.disabled === true</code>・<code>#frame</code>に<code>loading</code>クラスなし・<code>.waiting</code>の実効<code>display</code>は<code>none</code>のまま変化が無かった。唯一の痕跡は<code>#log</code>（≡の札の中の<code>&lt;details&gt;</code>）に記録された1行のみ。コード読解（<code>index.html</code> <code>refresh()</code> 1231〜1252行目）で、<code>loadFuda()</code>が失敗すると<code>catch</code>節に落ちて<code>put(...,'ng',...)</code>を呼ぶだけで、<code>saveBtn.disabled</code>を<code>false</code>に戻す経路も、画面上にエラーを出す経路も存在しないことを確認した。5秒の読み込み保険（<code>WAIT_NOTICE</code>・1228行目）も、<code>onerror</code>がほぼ即座に発火するため一度も作動しない（<code>frameLoading: false</code>がそれを裏づける）。</p>
+    <p><strong>因果連鎖:</strong> 5秒の保険は「読み込みが<em>遅い</em>」場合の体験（顕れています…を出す）だけを想定して設計されている → 読み込みが「<em>失敗する</em>」場合は別の経路（<code>catch</code>）に落ちるが、そちらには画面上のフィードバックが無い → 結果として、ネットワークが素材蔵に届かない環境（企業ネットワークのフィルタ・プライバシー系拡張機能・CDN障害・一時的なDNS不調など）で開いたユーザーは、額の中に絵が出ず、保存ボタンが薄いまま押せない状態を、理由の手がかり無しに見ることになる。</p>
+    <p><strong>根拠:</strong> O-13（E-13）。<strong>反証・補足:</strong> 別の御霊・深さを選び直せば新しい<code>loadFuda()</code>が試みられるため、ページ全体が使用不能になるわけではない（この特定の選択だけが恒久的に固まる）。ネットワークが常時前提の道具（README「絵は…実行時に読み込み」）であるため、遮断そのものは想定外ではないが、<strong>遮断時の体験</strong>は仕様・開発記録のどこにも記述が無い（<code>docs/DEVELOPMENT.md</code>「確かめきれていないこと」にもこの項目は無い）。</p>
+  </article>
+  <article class="card"><h3>R-2. 顔の列で、先頭・末尾に近い柱を選ぶと「中央に寄る」が成立しない</h3>
+    <p><span class="medium">確信度: medium（実害は視覚的な範囲に限られる）</span> — 直接測定3点: 中ほどの柱（風魔・カルマ）は選択後のずれ0.5px（ほぼ完全に中央）。最後の柱（根の国・シンラ、29柱中唯一の根の国）は選択後<code>scrollTop</code>が<code>maxScrollTop</code>（1429px）に張り付き、ずれ295.5px。最初の柱（甲賀・咲耶）は<code>scrollTop</code>が0に張り付き、ずれ295.5px（逆方向）。<code>#strip</code>の実測寸法は<code>scrollHeight</code>2089px・<code>clientHeight</code>660px（<code>obs-b4-recheck.json</code>）。</p>
+    <p><strong>因果連鎖:</strong> <code>centerStrip()</code>（<code>index.html</code> 801〜807行目）は<code>scrollIntoView({block:'center'})</code>をそのまま呼んでいる → これはブラウザ標準の挙動として、対象要素の前後に十分な余白（スクロール可能距離）が無い場合、コンテナの可動範囲の限界（0または最大値）で頭打ちになる → リストの先頭・末尾付近の柱（29柱のうち幾つかが該当。厳密な該当数は測っていないため確定はしないが、コンテナ半分の高さ330pxに対し平均1柱あたり約71pxの占有から換算すると先頭・末尾それぞれ数柱の範囲と見積もられる＝<strong>この見積もりは実測ではなく計算による推定</strong>）は、選んでも列の端に寄ったまま表示される。</p>
+    <p><strong>根拠:</strong> O-04（B-4）・追試 <code>obs-b4-recheck.json</code>。<strong>反証・補足:</strong> 機能面（選択の成立・名札の更新・額の入れ替え・押し所の判定）は先頭・末尾でも正しく動く。影響は「選んだ柱が視覚的に列の中央に来ない」という一点に限られ、操作の成否には影響しない。里の並びが甲賀→伊賀→雑賀→風魔→<strong>根の国（1柱のみ）</strong>で終わるため、根の国の柱（シンラ）は構造上つねにこの状態になる。</p>
+  </article>
+  </section>
+
+  <section><h2>E. インパクト分析</h2>
+  <table><thead><tr><th>根本課題</th><th>効果（達成できるか）</th><th>効率</th><th>満足・信頼</th><th>重大性</th></tr></thead><tbody>
+  <tr><td>R-1</td><td>その選択（御霊・深さの組み合わせ）では画像取得・保存ともに達成できない。選び直せば回復する</td><td>—</td><td>理由が分からないまま「壊れている」という印象を持つ余地がある。唯一の手がかりが3階層奥の詳細要素に埋もれている</td><td class="high">高</td></tr>
+  <tr><td>R-2</td><td>—（選択自体は成立する）</td><td>—</td><td>末尾・先頭の柱を選んだときだけ「ちゃんと選べているか」の視覚的な手がかりがやや弱くなる可能性がある（未検証・inferred）</td><td class="low">低</td></tr>
+  </tbody></table></section>
+
+  <section><h2>F. UX層別分析</h2>
+  <table><thead><tr><th>層</th><th>該当</th><th>読み</th></tr></thead><tbody>
+  <tr><td>戦略</td><td>—</td><td>「その端末にぴったり合わせて額装する」という道具の狙い自体は、正常系の観察すべてと矛盾しない</td></tr>
+  <tr><td>要件</td><td>R-1</td><td>「読み込みが遅いときの保険」は要件化されているが、「読み込みが失敗したときの体験」は要件として書かれていない（DEVELOPMENT.mdの「確かめきれていないこと」にも無い、未着手の次元）</td></tr>
+  <tr><td>構造</td><td>—</td><td>該当なし</td></tr>
+  <tr><td>骨格</td><td>R-2</td><td>「選んだ柱を中央に寄せる」というナビゲーション上の一貫性の一部が、リストの端という条件でだけ成立しない</td></tr>
+  <tr><td>表層</td><td>—</td><td>該当なし（表層の見た目には影響しない）</td></tr>
+  </tbody></table></section>
+
+  <section><h2>G. 個別観察</h2>
+  <table><thead><tr><th>ID</th><th>シナリオ</th><th>観点</th><th>task</th><th>acceptance</th><th>観察（要約）</th><th>証拠強度</th><th>影響</th><th>UX層</th><th>根本課題</th></tr></thead><tbody>
+<tr><td>O-01</td><td>A-1</td><td>AI observation</td><td>completed</td><td>ok</td><td>開幕の時間割（伏せ・解禁1443ms・題の顕れと収まり2243ms）は設計値と整合</td><td>direct</td><td>効果</td><td>骨格</td><td>—</td></tr>
+<tr><td>O-02</td><td>A-2</td><td>AI observation</td><td>completed</td><td>ok</td><td>タップで開幕を飛ばすと63ms以内に完全に立ち上がり押せる状態になる</td><td>direct</td><td>効率</td><td>骨格</td><td>—</td></tr>
+<tr><td>O-03</td><td>A-3</td><td>AI observation</td><td>completed</td><td>ok</td><td>SE（375×560）でも額・下の面・保存すべて画面内、頁は縦送りせず、最小文字12px</td><td>direct</td><td>効果</td><td>骨格</td><td>—</td></tr>
+<tr><td>O-04</td><td>B-4</td><td>AI observation</td><td>completed-with-friction</td><td>ng</td><td>中ほどの柱は中央寄せ誤差0.5px。先頭・末尾の柱はスクロール限界に張り付き295.5pxずれる</td><td>direct（追試込み）</td><td>満足（軽微）</td><td>骨格</td><td>R-2</td></tr>
+<tr><td>O-05</td><td>B-5</td><td>AI observation</td><td>completed</td><td>ok</td><td>名前で選ぶ札は里ごとの見出し付きで開閉・選択とも正常。列にはラベルが無く隙間のみ</td><td>direct</td><td>効果</td><td>骨格</td><td>—</td></tr>
+<tr><td>O-06</td><td>B-6</td><td>AI observation</td><td>completed</td><td>ok</td><td>階梯のタップは選んだ段まで正しく満ちる（3段目・8段目とも一致）</td><td>direct</td><td>効果</td><td>骨格</td><td>—</td></tr>
+<tr><td>O-07</td><td>B-7</td><td>AI observation</td><td>completed</td><td>ok</td><td>なぞりは狙った段（2→8）に正しく落ち着く。先読みの速度差はこの指標では検出できず（測定上の限界）</td><td>direct（一部 inconclusive）</td><td>効率（未確定）</td><td>骨格</td><td>—</td></tr>
+<tr><td>O-08</td><td>C-8</td><td>AI observation</td><td>completed</td><td>ok</td><td>保存後の札は取り消し／共有成立／download経路の3通りを正しく出し分け、中身は手順の文言と一致</td><td>direct</td><td>信頼</td><td>骨格</td><td>—</td></tr>
+<tr><td>O-09</td><td>C-9</td><td>—（未実施）</td><td>skipped</td><td>skipped</td><td>navigator.shareの実機体験は原理的に機械実行不可。not-tested</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+<tr><td>O-10</td><td>D-10</td><td>AI observation</td><td>completed</td><td>ok</td><td>≡の札の中身（手順・毎朝URLコピー・通ったこと・脚注）は全項目そろい、URLコピーも正常動作</td><td>direct</td><td>信頼</td><td>骨格</td><td>—</td></tr>
+<tr><td>O-11</td><td>E-11</td><td>AI observation</td><td>completed</td><td>ok</td><td>選んだ御霊・深さは新しいページでも正しく復元される（表示・aria-pressedとも一致）</td><td>direct</td><td>信頼</td><td>要件</td><td>—</td></tr>
+<tr><td>O-12</td><td>E-12</td><td>AI observation</td><td>completed</td><td>ok</td><td>localStorageアクセスが例外を投げても最後まで立ち上がり保存可能になる。pageerror 0件</td><td>direct</td><td>信頼</td><td>要件</td><td>—</td></tr>
+<tr><td>O-13</td><td>E-13</td><td>AI observation</td><td>completed-with-friction</td><td>not-applicable</td><td>素材蔵に届かないと保存が恒久的に無効なまま、画面上に見えるエラーが一切出ない。唯一の痕跡は≡の札の中の詳細要素1行のみ</td><td>direct（コード確認込み）</td><td>信頼</td><td>要件</td><td>R-1</td></tr>
+  </tbody></table>
+  <p class="muted">全文は <code>runs/2026-09-03-n4v8/UT結果ログ_2026-09-03.md</code>。「観点」はすべて AI observation（人間参加者は0名）。</p>
+  </section>
+
+  <section><h2>H. 参加者・観点別の寄与</h2>
+  <p>AI-P01（検品担当の代行）1観点のみ。人間の参加者は0名。AIの寄与は「時刻・座標・状態・コードとの突き合わせ」の直接観察に限られ、「迷い」「分かりにくさ」「初見での理解」は一切測っていない。逆に、境界条件（リストの先頭・末尾）や失敗経路（ネットワーク遮断）のような、人が偶然には踏みにくい条件を狙って再現・追試できたのは、機械実行ならではの寄与である。</p>
+  </section>
+
+  <section><h2>I. 結論</h2>
+  <p><strong>公開可否について:</strong> このUTは第6便その2までの姿を対象にしており、公開判断そのものは本レポートの範囲外（企画・オーナーの裁定領分）。ただし<strong>R-1（素材蔵に届かないときの無表示）は、公開後に実際に起こりうる環境（企業網・拡張機能によるブロック・一時的な障害）で発生しうる</strong>ため、対応するかどうかの判断が要る。<strong>R-2（列の端の中央寄せ）は実害が視覚的な範囲に限られ、機能そのものは損なわれていない</strong>。</p>
+  <p><strong>着手順（捨てる線ではない）:</strong> ① R-1（読み込み失敗時に、何らかの目に見える手がかり——たとえば数秒後に「読み込めませんでした」の一言を額の中か下の面に出す——を足すかどうかの判断。現状は無音で固まるだけ） → ② R-2（先頭・末尾の柱でも視覚的に選択が伝わる代替手段——たとえば列の外側にも印を残す、または中央寄せを諦めて端に寄せて表示する、など——を検討するかどうか。実害が小さいため優先度は低い）。</p>
+  <p><strong>次に人で埋めるもの:</strong> 実機の指（左列の縦送りとscroll-snapの効き・階梯のtouch-action:noneでの縦送りの取り合い）／共有シートの実物（C-9）／iOSのsafe-area適用時の額の実寸／なぞりの体感速度（先読みの効果はこのUTでは測定できなかった）。SPEC §7.7「確かめきれていないこと」に列挙されている項目と一致する。</p>
+  <p><strong>次工程への論点（改善案・分析とは別枠）:</strong> R-1は「エラーを見せる」か「無音のまま据え置く（ネットワーク必須という前提を受け入れる）」かの二択で、企画・実装の判断が要る。見せる場合、5秒の保険（<code>WAIT_NOTICE</code>）の仕組みを失敗経路にも延長するか、独立したメッセージを設けるかの選択肢がある。R-2は<code>scrollIntoView</code>の標準挙動そのものであり、直すなら「列の外にも選択の印を出す」「端の柱は寄せずに端表示のままにする」のような設計判断になる。</p>
+  </section>
+
+  <section><h2>付録. 証拠と追跡対応</h2>
+  <table><thead><tr><th>ID</th><th>シナリオ</th><th>証拠</th></tr></thead><tbody>
+<tr><td>O-01</td><td>A-1</td><td><code>screenshots/A1-veiled-300ms.png</code><br><code>screenshots/A1-risen-1600ms.png</code><br><code>obs-all.json A1</code></td></tr>
+<tr><td>O-02</td><td>A-2</td><td><code>screenshots/A2-after-tap.png</code><br><code>obs-all.json A2</code></td></tr>
+<tr><td>O-03</td><td>A-3</td><td><code>screenshots/A3-se-risen.png</code><br><code>obs-all.json A3</code></td></tr>
+<tr><td>O-04</td><td>B-4</td><td><code>screenshots/B4-strip-scrolled.png</code><br><code>screenshots/B4-after-select-shinra.png</code><br><code>screenshots/B4-recheck-boundary-shinra.png</code><br><code>obs-all.json B4</code><br><code>obs-b4-recheck.json</code><br><code>index.html:801-807</code></td></tr>
+<tr><td>O-05</td><td>B-5</td><td><code>screenshots/B5-picker-open.png</code><br><code>obs-all.json B5</code></td></tr>
+<tr><td>O-06</td><td>B-6</td><td><code>screenshots/B6-depth-initial.png</code><br><code>screenshots/B6-depth-3.png</code><br><code>screenshots/B6-depth-8.png</code><br><code>obs-all.json B6</code></td></tr>
+<tr><td>O-07</td><td>B-7</td><td><code>screenshots/B7-mid-drag.png</code><br><code>screenshots/B7-recheck-isolated.png</code><br><code>obs-all.json B7</code><br><code>obs-b7-recheck.json</code></td></tr>
+<tr><td>O-08</td><td>C-8</td><td><code>screenshots/C8-tips-card.png</code><br><code>obs-all.json C8</code></td></tr>
+<tr><td>O-09</td><td>C-9</td><td>— （not-tested）</td></tr>
+<tr><td>O-10</td><td>D-10</td><td><code>screenshots/D10-menu-open.png</code><br><code>obs-all.json D10</code></td></tr>
+<tr><td>O-11</td><td>E-11</td><td><code>screenshots/E11-restored.png</code><br><code>obs-all.json E11</code></td></tr>
+<tr><td>O-12</td><td>E-12</td><td><code>screenshots/E12-no-localstorage.png</code><br><code>obs-all.json E12</code></td></tr>
+<tr><td>O-13</td><td>E-13</td><td><code>screenshots/E13-2s.png</code><br><code>screenshots/E13-9s.png</code><br><code>obs-all.json E13</code><br><code>index.html:1228-1252</code></td></tr>
+  </tbody></table>
+  <p class="muted">設定: <code>ut.config.yaml</code>／シナリオ: <code>docs/ut/scenarios/UTシナリオ_20260903_*.html</code>／run: <code>docs/ut/runs/2026-09-03-n4v8/</code>（session.json・results.jsonl・baseline.md・cleanup-plan.md・obs-*.json・screenshots 19枚）。</p>
+  </section>
+
+  <section><h2>付録2. 実機に回す一覧（オーナーがiPhoneで見るもの）</h2>
+  <p class="muted">機械（ヘッドレスChrome・マウス操作）では原理的に測れない、または測っても実指の感触が保証されない項目。<strong>GitHub Pages公開後のURLで、実際の指で</strong>確かめること（<code>navigator.share</code>はHTTPSでしか動かないため、ローカルやArtifactプレビューでは本物の結果にならない — README「実機で確かめること」より）。</p>
+  <table><thead><tr><th>項目</th><th>手順</th><th>期待結果</th><th>観察点</th></tr></thead><tbody>
+  <tr><td>C-9: 共有シートで保存</td><td>好きな御霊・深さを選び「写真に保存」を押す</td><td>共有シートが開き、「画像を保存」で写真に入る。保存後に「壁紙にするとき、ひとつだけ」の札が出る</td><td>共有シートの開き方の自然さ・保存の手応え・札の内容が実際に必要な操作と合っているか</td></tr>
+  <tr><td>左の列（顔）を指で縦に送る</td><td>29柱の列を指でスクロールする。とくに列の端（先頭付近・末尾の根の国）で試す</td><td>スムーズに送れる。<code>scroll-snap-type:y</code>の効きが不自然でない</td><td>画面全体の縦送りと同じ向きのため、列の外で始めた指との取り合いが起きないか（DEVELOPMENT.md「確かめきれていないこと」）</td></tr>
+  <tr><td>右の階梯を指でなぞる</td><td>階梯（10段）を指で上下になぞって深さを選ぶ</td><td>なぞった指の下の段に印が追従し、離した段に落ち着く</td><td><code>touch-action:none</code>にしているため、階梯の上から始めた縦送りが端末に返らない感触になっていないか</td></tr>
+  <tr><td>R-2（列の中央寄せ）の実指での見え方</td><td>根の国（シンラ・列の最後）や甲賀の先頭（咲耶）を選ぶ</td><td>—（正解を示さない）</td><td>選んだ柱が列の端に寄ったままでも、選べていることが指の感触・見た目で分かるか</td></tr>
+  <tr><td>R-1（素材蔵に届かない）の実地確認</td><td>機内モードやWi-Fiを切った直後にページを開く／読み込み中に通信を切る</td><td>—（本UTでは「保存ボタンが恒久的に無効・エラー非表示」を確認済み。実機でも同じ見え方になるかだけを見る）</td><td>実機でも本当にエラーの手がかりが無いか。回復するにはどうすればよいか自力で分かるか</td></tr>
+  <tr><td>safe-areaが乗ったときの額の幅</td><td>ホームバー付きのiPhoneで通常に開く</td><td>額・左右の列・保存ボタンが画面からはみ出さない</td><td>ヘッドレスでは<code>env(safe-area-inset-*)</code>が0扱いのため、実機だけがこの値を持つ（DEVELOPMENT.md「確かめきれていないこと」）</td></tr>
+  <tr><td>壁紙に設定する最後の一手</td><td>保存した画像を、docs/SHORTCUT.mdの手順（甲）で壁紙に設定する</td><td>額装した通りの姿で入る（拡大されない）</td><td>「被写体を切り取る」設定のオフが手順どおりに効くか（2026-08-31に確認済みの手順の再確認）</td></tr>
+  </tbody></table>
+  </section>
+
+  <footer>Generated from UT evidence · 夜じたて 2026-09-03 v1 · 分析: 検品担当（結）</footer>
+</main>
+</body>
+</html>

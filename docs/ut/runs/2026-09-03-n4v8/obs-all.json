@@ -1,0 +1,245 @@
+{
+  "A1": {
+    "t0": {
+      "t": 47,
+      "bodyLocked": true,
+      "pe": "none",
+      "h1op": 0,
+      "hit": false,
+      "daimei": {
+        "op": 0,
+        "disp": "block",
+        "inBand": true
+      }
+    },
+    "t300": {
+      "t": 343,
+      "bodyLocked": true,
+      "pe": "none",
+      "h1op": 0,
+      "hit": false,
+      "daimei": {
+        "op": 1,
+        "disp": "block",
+        "inBand": true
+      }
+    },
+    "t600": {
+      "t": 644,
+      "bodyLocked": true,
+      "pe": "none",
+      "h1op": 0,
+      "hit": false,
+      "daimei": {
+        "op": 1,
+        "disp": "block",
+        "inBand": true
+      }
+    },
+    "t1100": {
+      "t": 1145,
+      "bodyLocked": true,
+      "pe": "none",
+      "h1op": 0,
+      "hit": false,
+      "daimei": {
+        "op": 1,
+        "disp": "block",
+        "inBand": true
+      }
+    },
+    "t1400": {
+      "t": 1443,
+      "bodyLocked": false,
+      "pe": "auto",
+      "h1op": 0.575892,
+      "hit": true,
+      "daimei": {
+        "op": 0.0751588,
+        "disp": "block",
+        "inBand": true
+      }
+    },
+    "t1900": {
+      "t": 1942,
+      "bodyLocked": false,
+      "pe": "auto",
+      "h1op": 1,
+      "hit": true,
+      "daimei": {
+        "op": 0,
+        "disp": "block",
+        "inBand": true
+      }
+    },
+    "t2200": {
+      "t": 2243,
+      "bodyLocked": false,
+      "pe": "auto",
+      "h1op": 1,
+      "hit": true,
+      "daimei": {
+        "op": 0,
+        "disp": "none",
+        "inBand": false
+      }
+    }
+  },
+  "A2": {
+    "tapAt": 418,
+    "after": {
+      "t": 481,
+      "h1op": 1,
+      "pe": "auto",
+      "hit": true
+    }
+  },
+  "A3": {
+    "frame": {
+      "top": 2,
+      "bottom": 424,
+      "left": 81.875,
+      "right": 319.125,
+      "w": 237.25,
+      "h": 422
+    },
+    "sheet": {
+      "top": 426,
+      "bottom": 560,
+      "left": 0,
+      "right": 375,
+      "w": 375,
+      "h": 134
+    },
+    "save": {
+      "top": 484,
+      "bottom": 532,
+      "left": 12,
+      "right": 363,
+      "w": 351,
+      "h": 48
+    },
+    "docH": 560,
+    "cliH": 560,
+    "smallest": {
+      "t": "咲耶",
+      "px": 12
+    },
+    "errors": []
+  },
+  "B4": {
+    "before": {
+      "name": "咲耶",
+      "gaps": 4,
+      "count": 29
+    },
+    "icons": {
+      "loaded": 29,
+      "total": 29
+    },
+    "clickRes": {
+      "stripCenterBefore": 378,
+      "btnCenterBefore": 673.5
+    },
+    "after": {
+      "name": "シンラ",
+      "pressedCount": 1,
+      "centerDelta": 295.5
+    },
+    "errors": []
+  },
+  "B5": {
+    "chooserLook": {
+      "text": "シンラ しんら／根の国・土 名前で選ぶ ▾",
+      "tag": "BUTTON",
+      "hasArrowGlyph": true
+    },
+    "openState": true,
+    "groups": [
+      "甲賀",
+      "伊賀",
+      "雑賀",
+      "風魔",
+      "根の国"
+    ],
+    "after": {
+      "open": false,
+      "name": "オロチ"
+    }
+  },
+  "B6": {
+    "d3": {
+      "pressedIndex": 3,
+      "numberedCount": 1,
+      "filledCount": 3
+    },
+    "d8": {
+      "pressedIndex": 8,
+      "numberedCount": 1,
+      "filledCount": 8
+    }
+  },
+  "B7": {
+    "mid": 8,
+    "end": 8,
+    "freshLoadMs": null,
+    "nearAfterPrefetchMs": 410,
+    "farAfterPrefetchMs": 404
+  },
+  "C8": {
+    "afterAbort": false,
+    "afterResolve": true,
+    "afterDownload": true,
+    "sameText": true
+  },
+  "D10": {
+    "inside": {
+      "daily": true,
+      "dailyHidden": false,
+      "copy": true,
+      "log": true,
+      "howto": true,
+      "url": "https://github.com/hiroHGxx/yo-jitate/releases/download/daily/yo-jitate-1179x2556.jpg",
+      "logText": "端末の実寸  上書き中\n   1179 × 2556  （#size= で上書き中）\n素材蔵から crossOrigin で読む  通った\n   1024×1536 / https://kura.vibe.co.jp/fuda/v2/fuda_orochi_01.webp\ntoBlob で書き出す  通った\n   159 KB の JPEG\n共有シートに画像を渡せるか  通った\n   navigator.share で「画像を保存」が出せる",
+      "text": "札絵を、その端末の夜に合わせて額装します壁紙にする手順顕れの深さ—浅いほど暗く静かに、深いほど極彩色に顕れます。時計も通知もこの上に乗るので、壁紙には浅い段のほうがよく効きます。写真アプリで開く→共有→壁紙に設定。ただしiOSは勝手に顔まで拡大します。設定画面で指2本を近づけて縮め、上に藍色の帯が出るまでズームを戻してください。そこが額装した通りの姿です。この拡大の正体は「被写体を切り取る」という設定です。ショートカットを2手だけ組むとそこを切れるので、縮める操作なしで額装どおりに入ります（実機で確認済み）。毎朝ひとりでに替えるならこの端末（1179×2556）に合う「今日の一枚」を、毎朝ここに置いています。ショートカットの「URLの内容を取得」にこれを貼ってください。https://github.com/hiroHGxx/yo-jitate/releases/download/daily/yo-jitate-1179x2556.jpgURLをコピー作り方はこちら。日付から一意に決まるので、29柱×10段を290日で一巡します。この端末で通ったこと端末の実寸上書き中1179×2556（#size=で上書き中）素材蔵からcrossOriginで読む通った1024×1536/https://kura.vibe.co.jp/fuda/v2/fuda_orochi_01.webptoBlobで書き出す通った159KBのJPEG共有シートに画像を渡せるか通ったnavigator.shareで「画像を保存」が出せる破線は保存画像には入りません。画面で位置を見るための目安です。この道具は月蝕綺譚の二次創作で、公式とは関係ありません。絵は公式の素材蔵から読み込み、この端末の中で額装しています。原本を配ってはいません。"
+    },
+    "clip": {
+      "n": 1,
+      "last": "https://github.com/hiroHGxx/yo-jitate/releases/download/daily/yo-jitate-1179x2556.jpg",
+      "label": "写しました"
+    }
+  },
+  "E11": {
+    "picked": {
+      "id": "karura",
+      "depth": 9
+    },
+    "restored": {
+      "name": "カルラ",
+      "depth": 9
+    }
+  },
+  "E12": {
+    "baked": true,
+    "errors": []
+  },
+  "E13": {
+    "blockedCount": 1,
+    "blockedSample": [
+      "https://kura.vibe.co.jp/fuda/v2/fuda_karura_09.webp"
+    ],
+    "at2s": {
+      "saveDisabled": true,
+      "frameLoading": false,
+      "waitingDisplay": "none",
+      "logText": "端末の実寸  上書き中\n   1179 × 2556  （#size= で上書き中）\n素材蔵から crossOrigin で読む  落ちた\n   読み込めない: https://kura.vibe.co.jp/fuda/v2/fuda_karura_09.webp"
+    },
+    "at9s": {
+      "saveDisabled": true,
+      "frameLoading": false,
+      "waitingDisplay": "none",
+      "logText": "端末の実寸  上書き中\n   1179 × 2556  （#size= で上書き中）\n素材蔵から crossOrigin で読む  落ちた\n   読み込めない: https://kura.vibe.co.jp/fuda/v2/fuda_karura_09.webp"
+    },
+    "errors": []
+  }
+}

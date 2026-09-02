@@ -1,0 +1,98 @@
+# 夜じたて — ユーザーテスト設定（目付）
+#
+# 対象: 『月蝕綺譚 -Luna Occulta-』二次創作の道具。**ゲームではない**——札絵を端末の画面寸法に
+#       額装して写真に保存するまでを受け持つ。第0〜4便で道具として成立、第5便で「選ぶ側の仕上げ」、
+#       第6便で「額を画面に」、第6便その2「閉じた姿ひとつに」で現行の骨（1画面・状態はひとつ）になった
+#       （docs/SPEC.md §7.7 が正本）。この run はこの§7.7の姿を対象にする。
+#
+# この作品固有の事情（すべて docs/SPEC.md・README.md・docs/DEVELOPMENT.md から）:
+#   - **1画面のアプリ**（`#app{position:fixed;inset:0}`。頁は流れない）。
+#     左＝29柱の顔の縦列（#strip・里の順・里の境に隙間）、中央＝額（canvas #frame）、
+#     右＝顕れの深さの階梯（#depth・10段・01が下）、下＝名札（#chooser・押すと#picker）・
+#     「写真に保存」（#save）・二次創作の一行。左上 ≡（#menuBtn）で「ほかの案内」の札（#menu）。
+#     開閉の仕掛け（つまみ・data-open・aria-expanded）は第6便その2で**消えている**。
+#   - **開幕の1.2秒は部品が伏せられて押せない**（`body.locked`。1260ms 以降で押せる）。
+#     待たずに叩くと `pointer-events:none` をすり抜けて何も起きないまま進む。
+#     **緑が出たら「本当に何かしたのか」を疑う**（`ready(page)` で `locked` が消えるまで待つ）。
+#     画面のどこをタップしても飛ばせる（部品が即座に立ち上がる）。
+#   - ヘッドレス Chrome の `screen.width` は OS の画面を返す。端末寸法は URL の
+#     `#size=1179x2556`（iPhone 15）／`#size=750x1334`（SE）で上書きする。
+#   - **`navigator.share`（共有シート）はヘッドレスでは開かない**（永久に待つ）。
+#     保存の実機部分は `not-tested`／`blocked` として正直に残す（オーナーの実機に回す）。
+#     3つの結末（AbortError／resolve／download）を差し替えて仕込めば、「保存後の札（#tips）が出るか」
+#     だけは機械で見られる（既存 `scripts/check-layout.js` の型）。
+#   - 絵は素材蔵 https://kura.vibe.co.jp から直読み（ネット必須）。顔アイコンは vibe.co.jp から。
+#   - **localStorage（キー `yo-jitate.pick`）がその端末の「選んだ一枚の控え」**。本番 origin
+#     （https://hirohgxx.github.io/yo-jitate/）の控えを書き換えない。**UT はローカルの静的サーバー
+#     （`Content-Type: text/html; charset=utf-8` 必須）で行う**。課金・送信・外部影響は無い。
+#
+# 参加者像: 『月蝕綺譚』のファンで、推しの札絵をスマホの壁紙にしたい人。
+#           ショートカットやiOSの設定には詳しくない。
+#
+# 観察の役割分担: SHITSURAE の決めごと（12px床・押し所24/44px・地の二色）は金継ぎ（意匠）が見る。
+#           目付（この run）は**動き・迷い・理解・回復**を見る。
+#
+# 参加者について（正直に明記）: この run は AI（検品担当・結）が puppeteer-core（Chrome 実機バイナリ）で
+#           操作した機械実行。人間の初見の言語化・体感速度・実指の感触・共有シートは原理的に演じられない
+#           （kiyome-bayashi run q8h3 と同じ限界）。「実機に回す一覧」に必ず書く。
+
+version: "2.0"
+
+project:
+  name: "夜じたて"
+  type: "web-app"   # ゲームではない道具（額装＋写真保存）
+  root: "."
+
+test:
+  mode: "hybrid"
+  environment: "local"
+  base_url: "http://127.0.0.1:0/"   # 観察スクリプトが毎回ポートを自動割当して配信。本番 origin では実施しない
+  participant_profile: "『月蝕綺譚』のファンで、推しの札絵をスマホの壁紙にしたい人。ショートカットやiOSの設定には詳しくない。29柱・里・深さ10段という本作固有の語彙は知らない状態で開く"
+  participant_count: 1
+  moderator: "qa"        # 検品担当（結）。観察のみ。解釈は入れない
+  locale: "ja-JP"
+
+sources:
+  requirements:
+    - "docs/SPEC.md"          # 実装仕様＝受入判定の正本（§0 前提・§2 第5便・§7 第6便・§7.7 が現行の骨）
+  design:
+    - "docs/DEVELOPMENT.md"   # 実装の記録・踏んだ穴・実測値
+    - "README.md"             # 外向きの説明（利用者の入口）
+    - "docs/SHORTCUT.md"      # 壁紙にする最後の一手（この道具の外・実機のみ）
+    - "index.html"            # DOM とスタイルと進行の実体
+    - "scripts/check-layout.js"  # 既存の受入検査（型を写す。書き換えない）
+  change_sources: ["git"]
+  requirement_id_pattern: ""  # 要件IDの体系は無い。SPEC.md の節番号（§2 §7 §7.7 …）で追う
+
+artifacts:
+  root: "docs/ut"
+  format: "html"
+  create_participant_view: true
+  create_moderator_view: true
+
+execution:
+  order: ["non-mutating", "reversible-mutation", "irreversible-or-external-effect"]
+  allow_production_mutation: false   # 本番 origin（github.io）の localStorage を書き換えない
+  require_confirmation_for_external_effects: true
+
+test_data:
+  enabled: false
+  # 理由: このアプリが作るデータは localStorage の1キー（yo-jitate.pick）だけで、
+  #       UT はそれが空のローカル origin で行う。接頭辞を付ける対象が存在しない。
+  #       片付けは「UT origin（配信サーバー）ごと閉じる」で済む。
+  cleanup: "assisted"
+  require_baseline: true
+  require_dry_run: true
+  require_explicit_approval: true
+
+observation:
+  capture_task_time: true
+  capture_quotes: true       # AI代理のため実際には全件 null になる（記録の型は共通にしておく）
+  capture_screenshots: "required"
+  anonymize_participants: true
+  recording: "disabled"
+
+analysis:
+  frameworks: ["nielsen-10", "impact-effect-efficiency-satisfaction"]
+  root_issue_target: "3-5"
+  confidence_levels: ["high", "medium", "low"]

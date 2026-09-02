@@ -1,0 +1,11 @@
+{
+  "purpose": "元のB-7計測でfreshLoadMsがnullになった原因切り分け（browser contextを分離し、localStorageの持ち越しを断ってから測り直した）",
+  "isolation": "browser.createBrowserContext() による独立コンテキスト（localStorageを共有しない）で1回だけ実施",
+  "initial_pick_confirmed_default": { "id": "sakuya", "depth": 5 },
+  "results_ms": {
+    "fresh_never_selected_spirit_orochi": 405,
+    "near_depth_after_3s_wait_for_prefetch": 383,
+    "far_depth_after_3.5s_wait_for_prefetch": 397
+  },
+  "note": "3値はほぼ同一（誤差20ms程度）。この指標（saveボタンのdisabled解除までの時間）は固定長のreveal演出（SWAP_MS）が支配的で、先読みによるネットワーク取得時間の短縮を検出できない指標だった可能性が高い。先読みの効果の有無はこの方法では判定できない（not-determined）"
+}

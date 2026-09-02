@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>夜じたて UTモデレーターシナリオ</title>
+  <style>
+    :root { color-scheme:light; --ink:#17202a; --muted:#667085; --line:#d7dce2; --paper:#fff; --soft:#f5f7fa; --accent:#2457d6; --good:#157347; --warn:#9a6700; --danger:#b42318; }
+    * { box-sizing:border-box; }
+    body { margin:0; overflow-x:hidden; background:var(--soft); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; line-height:1.55; }
+    main { width:min(1240px,calc(100% - 32px)); max-width:calc(100vw - 32px); margin:32px auto; background:var(--paper); padding:clamp(24px,4vw,52px); border:1px solid var(--line); border-radius:16px; }
+    h1 { font-size:clamp(28px,4vw,42px); line-height:1.15; margin:0 0 12px; }
+    h2 { margin-top:48px; padding-bottom:10px; border-bottom:2px solid var(--ink); }
+    .meta { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; margin:20px 0; color:var(--muted); }
+    .callout { padding:16px 18px; background:#eef3ff; border-left:4px solid var(--accent); border-radius:8px; margin:16px 0; }
+    .callout.amber { background:#fff8e6; border-left-color:var(--warn); }
+    table { width:100%; border-collapse:collapse; margin:18px 0 30px; font-size:14px; }
+    th,td { padding:12px; border:1px solid var(--line); vertical-align:top; text-align:left; }
+    th { background:#edf0f4; }
+    .id { font-weight:750; color:var(--accent); white-space:nowrap; }
+    .source { color:var(--muted); font-size:12px; }
+    .risk-low { color:var(--good); }
+    .risk-medium { color:var(--warn); }
+    .risk-high { color:var(--danger); font-weight:700; }
+    code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.92em; }
+    h1,h2,p,.callout,.meta span { overflow-wrap:anywhere; }
+    footer { margin-top:48px; color:var(--muted); font-size:13px; }
+    @media (max-width:800px) { table { display:block; overflow-x:auto; } th,td { min-width:150px; } }
+    @media print { body { background:#fff; } main { width:100%; margin:0; border:0; padding:20px; } table { font-size:11px; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>夜じたて UTモデレーターシナリオ</h1>
+    <div class="meta">
+      <span>モード: hybrid</span>
+      <span>環境: local（配信スクリプトが自動割当ポートで配信）</span>
+      <span>作成: 2026-09-03</span>
+      <span>改訂: —</span>
+      <span>シナリオ数: 13</span>
+      <span>設定: ut.config.yaml</span>
+    </div>
+  </header>
+
+  <div class="callout">
+    参加者へ期待結果や理想操作を先に見せない。結果は実施中に <code>results.jsonl</code> へ逐次保存する。
+    <code>observed</code> は事実だけを書き、<code>interpretation</code> は<strong>空のまま</strong>渡す（解釈は分析工程の持ち場）。
+  </div>
+
+  <div class="callout amber">
+    <strong>この run の参加者は人間ではない。</strong>AI（検品担当・結）が puppeteer-core（Chrome 実機バイナリ）で
+    初見の遊び手を代行する。表示・数値・時間・コードは <code>direct</code> な観察として扱えるが、
+    人間の初見の言語化・体感速度・実指の感触（スワイプ・safe-area・共有シート）は原理的に演じられない。
+    それらは各シナリオの「実施」欄に <code>not-tested（実機のみ）</code>と明記し、最後にまとめて実機へ回す。
+  </div>
+
+  <h2>0. 目的・範囲・前提</h2>
+  <ul>
+    <li><strong>対象</strong>: 『月蝕綺譚』の二次創作の道具「夜じたて」。ゲームではない。札絵を端末寸法に額装して写真に保存するまでを受け持つ。対象の姿は SPEC.md §7.7「閉じた姿ひとつに」＝1画面・状態はひとつ（開閉の仕掛けが無い）。</li>
+    <li><strong>対象ユーザー</strong>: 『月蝕綺譚』のファンで、推しの札絵を壁紙にしたい人。ショートカットやiOSの設定には詳しくない。29柱・里・深さ10段の語彙は知らない状態で開く。</li>
+    <li><strong>対象ジャーニー</strong>: 開く → 顕れを見る／飛ばす → 推しを選ぶ（列 or 名札） → 深さを選ぶ（タップ／なぞり） → 保存する → 壁紙にする手順を知る。</li>
+    <li><strong>対象外</strong>: 額装の幾何の数値そのもの（継ぎ目・蝕環・書き出しの重さ＝<code>check-frame.js</code> が既に担保）、台帳の一致（<code>build-roster.js --check</code>）、色・文字段・角丸の散らかり度（意匠＝金継ぎの持ち場）、実際の壁紙設定（この道具の外・SHORTCUT.md）。</li>
+    <li><strong>実施環境</strong>: このリポジトリを Node.js の観察スクリプトが <code>Content-Type: text/html; charset=utf-8</code> 付きで自動割当ポートに配信したもの。<strong>本番 origin（github.io）では実施しない</strong>——本番の <code>localStorage</code>（<code>yo-jitate.pick</code>）はオーナーの控えだから。ローカル origin は同時に「初見の状態」でもある。</li>
+    <li><strong>受入の正本</strong>: <code>docs/SPEC.md</code>（節番号で追跡）。既存の機械検査 <code>scripts/check-layout.js</code> は本 run の直前に単独で実行し、150項目すべて通ることを確認済み（<code>baseline.md</code> 参照）。この run はその検査が見ていない「初見の理解・迷い・回復」を見る。</li>
+  </ul>
+
+  <div class="callout amber">
+    <strong>実施順の逸脱について（明示）</strong>: 設定の <code>execution.order</code> は非破壊→可逆変更→不可逆の順。
+    本作の可逆変更は <code>localStorage</code> の1キー（<code>yo-jitate.pick</code>）に限られ、配信サーバーごと閉じれば消える。
+    <strong>唯一の不可逆・外部影響</strong>は「写真に保存」が実機で開く共有シート（<code>navigator.share</code>）。
+    ヘッドレスでは開かず永久に待つ性質のため、機械実施では3つの結末（AbortError／resolve／download）を差し替えて
+    「札（<code>#tips</code>）が出るか」だけを見る（C-8）。<strong>実際の共有シートの体験は C-9 として実機のみに回す</strong>。
+  </div>
+
+  <div class="callout amber">
+    <strong>観察する側の罠（DEVELOPMENT.md・check-layout.js から必読）</strong>
+    <ul>
+      <li><strong>開幕の1.2秒は入力が伏せられている。</strong>待たずに叩くと <code>pointer-events:none</code> をすり抜けて別の要素を叩き、「開かない」という嘘の落ち方をする。<code>body.locked</code> が消えるまで待ってから叩く（<code>ready(page)</code>）。<strong>緑が出たら、まず「本当に何かしたのか」を疑う。</strong></li>
+      <li><strong>ヘッドレス Chrome の <code>screen.width</code> は OS の画面を返す。</strong>端末寸法は <code>#size=</code> で上書きする。</li>
+      <li><strong><code>navigator.share</code> は解決も棄却もしない。</strong>永久に待つので、必ず差し替えてから叩く。</li>
+    </ul>
+  </div>
+
+  <h2>A. はじめて開く（非破壊）</h2>
+  <table>
+    <thead><tr><th>No.</th><th>開始状態・参加者タスク</th><th>成功条件・期待結果</th><th>観察点・中立プローブ</th><th>リスク・データ</th><th>結果</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="id">A-1</span><div class="source">SPEC §2.1 顕れ／index.html #daimei #frame</div></td>
+        <td><strong>開始:</strong> localStorage 空。URLを開いた直後。<br><strong>タスク:</strong> 何も操作せず、画面が立ち上がるまで眺める</td>
+        <td>0msは地と蝕環だけ。額の中で札絵が0→1に600msで顕れる。1200msに周りの部品が0→100%で一段立ち上がる。1260ms以降に押せる。600msの時点、額の時計の帯（上17%）に題字「夜じたて」が大きく浮かび、1200msにh1の位置へ縮んで収まる。1900ms以降は完全不透明で題字（daimei）は仕舞われる</td>
+        <td><strong>観察:</strong> 部品が伏せられている間（〜1260ms）に何が見えるか／題字がどこに立つか／立ち上がりが一段か・段階的か・「踊り場」があるか<br><strong>必要時のみ:</strong> なし（AI代理のため無し）</td>
+        <td><span class="risk-low">non-mutating</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><span class="id">A-2</span><div class="source">SPEC §2.1「画面のどこをタップしても飛ばせる」</div></td>
+        <td><strong>開始:</strong> 開いた直後、1200msより前。<br><strong>タスク:</strong> 早く先へ進みたくて、画面のどこかを触ってみる</td>
+        <td>タップした瞬間に部品が即座に立ち上がり、押せる状態になる（絵の顕れは途中でも1へ）</td>
+        <td><strong>観察:</strong> タップしてから押せるようになるまでの時間／どこを叩いても同じ挙動か</td>
+        <td><span class="risk-low">non-mutating</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><span class="id">A-3</span><div class="source">SPEC §7.7 #1／小さい端末（SE 375×560）</div></td>
+        <td><strong>開始:</strong> iPhone SE 相当（375×560・#size=750x1334）で開く。<br><strong>タスク:</strong> 同じ手順で顕れ→立ち上がりまで見る</td>
+        <td>額・左列・右列・下の面のすべてが画面内に収まる／「写真に保存」が画面内・最下端に触れない／頁が縦にスクロールしない／押し所の床（12px・24/44px）が崩れない</td>
+        <td><strong>観察:</strong> 393×740基準の並びと比べて、詰まって見える箇所があるか／文字・押し所が実測でどれだけ小さくなるか</td>
+        <td><span class="risk-low">non-mutating</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>B. 推しを選ぶ（可逆変更＝控えを書く）</h2>
+  <table>
+    <thead><tr><th>No.</th><th>開始状態・参加者タスク</th><th>成功条件・期待結果</th><th>観察点・中立プローブ</th><th>リスク・データ</th><th>結果</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="id">B-4</span><div class="source">SPEC §7.7 左列 #strip／29柱・里の順</div></td>
+        <td><strong>開始:</strong> 立ち上がり完了後。<br><strong>タスク:</strong> 左の顔の列を端まで縦に見て、29柱ぜんぶに顔があるか、里ごとに区切りがあるかを確かめる。1柱を選ぶ</td>
+        <td>列は縦スクロールし、29柱すべてに顔アイコンが出る。里の境（5里→4か所）に隙間がある。押し所は44px以上。選ぶと額の中身が入れ替わる（350msで顕れ直す）。選んだ柱の印はひとつだけ。選んだ柱が列の中央へ寄る（<code>scrollIntoView</code>）</td>
+        <td><strong>観察:</strong> 里の区切りに気づくか（隙間だけで、ラベルは無い）／列を送るのにどれだけ操作が要るか／選んだ後、額の絵が切り替わったと分かるか</td>
+        <td><span class="risk-medium">reversible-mutation</span><br>localStorage: yo-jitate.pick</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><span class="id">B-5</span><div class="source">SPEC §2.2 名札／#chooser #picker</div></td>
+        <td><strong>開始:</strong> 任意の柱を選んだ状態。<br><strong>タスク:</strong> 名前で直接、別の御霊を探して選んでみる</td>
+        <td>下の名札（現在の柱名＋「名前で選ぶ ▾」）を押すと札（#picker）が開く。✕・外側タップ・Escのいずれでも閉じる。選ぶと札が自動で閉じ、名札の表示が入れ替わる</td>
+        <td><strong>観察:</strong> 名札が「押せるボタン」だと気づくまでの動き／札の中の探し方（スクロールか一覧か）／閉じ方をどれで試すか</td>
+        <td><span class="risk-medium">reversible-mutation</span><br>localStorage: yo-jitate.pick</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><span class="id">B-6</span><div class="source">SPEC §2.3／§7.7 右列 #depth（タップ）</div></td>
+        <td><strong>開始:</strong> 御霊を選んだ状態。<br><strong>タスク:</strong> 右の階梯を押して、深さを変えてみる</td>
+        <td>10個のボタンがあり、01が下・10が上。押した段まで下から金泥が満ちる。数字は選んだ段にだけ出る。押し所は24px以上</td>
+        <td><strong>観察:</strong> 「01が下」の並びに違和感が出るか／数字が選んだ段にしか出ないことに気づくか／深浅の意味（浅いほど暗く静か）を推測できるか</td>
+        <td><span class="risk-medium">reversible-mutation</span><br>localStorage: yo-jitate.pick</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><span class="id">B-7</span><div class="source">SPEC §2.3 なぞり／先読み・切り替えの速さ</div></td>
+        <td><strong>開始:</strong> 御霊を選んだ状態。<br><strong>タスク:</strong> 指（マウス）を階梯の上に置いたまま、上下になぞって数段を渡り歩く。渡った後、いくつかの段を素早く行き来してみる</td>
+        <td>なぞっている間は印と数字だけ動き、絵の読み込みは指を離した時（または150ms止まった時）に1回。同じ御霊の残り9段は焼き上がり後に裏で先読みされ、一度読み込んだ段への再訪は即座に顕れる（読み込み回数がなぞった段数より少ない）</td>
+        <td><strong>観察:</strong> なぞっている間、絵が段ごとに切り替わって見えるか・印だけが動いて見えるか／一度渡った段へ戻したときの体感速度の違い</td>
+        <td><span class="risk-medium">reversible-mutation</span><br>localStorage: yo-jitate.pick</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>C. 保存する</h2>
+  <table>
+    <thead><tr><th>No.</th><th>開始状態・参加者タスク</th><th>成功条件・期待結果</th><th>観察点・中立プローブ</th><th>リスク・データ</th><th>結果</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="id">C-8</span><div class="source">SPEC §2.4／#save #tips（機械＝3経路の差し替え）</div></td>
+        <td><strong>開始:</strong> 御霊・深さを選び「写真に保存」が押せる状態。<br><strong>タスク:</strong> 「写真に保存」を押す</td>
+        <td>共有シートが通った（resolve）／download経路が通った、のいずれでも「壁紙にするとき、ひとつだけ」の札（#tips）が出る。取り消し（AbortError）では出ない。札の中身は「壁紙にする手順」（≡の中）と同じ文言。閉じ方は✕・外側・Esc</td>
+        <td><strong>観察:</strong> 機械実施のため <code>navigator.share</code> を3通りに差し替えて叩く（実際の共有UIは開かない）。札が出るタイミングと中身の一致だけを見る</td>
+        <td><span class="risk-medium">irreversible-or-external-effect（差し替え済みなので実害なし）</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><span class="id">C-9</span><div class="source">navigator.share（実機のみ）</div></td>
+        <td><strong>開始:</strong> 実機（iPhone・Safari・HTTPS配信）で「写真に保存」が押せる状態。<br><strong>タスク:</strong> 「写真に保存」を押し、実際の共有シートで「画像を保存」まで進める</td>
+        <td>共有シートが開き、画像を保存できる。保存後に「壁紙にするとき、ひとつだけ」の札が出る</td>
+        <td><strong>観察:</strong> 共有シートの見え方・保存の手応え・札の内容と実際に必要な操作が一致しているか</td>
+        <td><span class="risk-high">irreversible-or-external-effect</span><br><strong>not-tested（実機のみ・機械では navigator.share が解決/棄却しないため原理的に不可能）</strong></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>D. ≡ の札（ほかの案内）</h2>
+  <table>
+    <thead><tr><th>No.</th><th>開始状態・参加者タスク</th><th>成功条件・期待結果</th><th>観察点・中立プローブ</th><th>リスク・データ</th><th>結果</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="id">D-10</span><div class="source">SPEC §7.3／#menuBtn #menu #dailyBox #copyUrl #log</div></td>
+        <td><strong>開始:</strong> 立ち上がり完了後。<br><strong>タスク:</strong> 壁紙にする手順を知りたいので、左上の記号（≡）を押して中を見る。「毎朝ひとりでに替える」の説明とURLコピーの釦も確かめる。「この端末で通ったこと」も開いてみる</td>
+        <td>≡ を押すと札が開く（✕・外側・Esc で閉じる）。中に副題の一行・「壁紙にする手順」（2段落）・「毎朝ひとりでに替えるなら」（寸法が合う端末で表示）・「URLをコピー」（押すとクリップボードに書く／ラベルが「写しました」に変わる）・「この端末で通ったこと」・脚注（二次創作の明記・原本を配っていない旨）がある</td>
+        <td><strong>観察:</strong> ≡ の記号だけで「案内がある」と伝わるか／札の中の探しやすさ（詳細=details要素の開閉）／URLコピーの手応え</td>
+        <td><span class="risk-low">reversible-mutation（clipboard書き込みのみ）</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>E. 状態・環境</h2>
+  <table>
+    <thead><tr><th>No.</th><th>開始状態・参加者タスク</th><th>成功条件・期待結果</th><th>観察点・中立プローブ</th><th>リスク・データ</th><th>結果</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="id">E-11</span><div class="source">yo-jitate.pick（控えの復元）</div></td>
+        <td><strong>開始:</strong> B群で御霊・深さを選んだ直後。<br><strong>タスク:</strong> 一度ページを離れて、もう一度同じURLを開く</td>
+        <td>前回選んだ御霊・深さが復元され、額に同じ絵が出た状態で立ち上がる</td>
+        <td><strong>観察:</strong> 復元されるまでの見え方（一瞬でも既定の柱が見えるか）／復元されたことに気づける表示があるか</td>
+        <td><span class="risk-low">non-mutating（既存の控えを読むだけ）</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><span class="id">E-12</span><div class="source">localStorage が使えない環境</div></td>
+        <td><strong>開始:</strong> localStorage へのアクセスが例外を投げる状態（プライベートブラウズ等を模す）で開く。<br><strong>タスク:</strong> 通常どおり操作してみる</td>
+        <td>例外が投げられても最後まで画面が立ち上がり、保存まで操作できる（控えが効かないだけで、道具としては壊れない）</td>
+        <td><strong>観察:</strong> 画面上にエラーが露出しないか／機能が黙って止まる箇所が無いか</td>
+        <td><span class="risk-low">non-mutating</span></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><span class="id">E-13</span><div class="source">素材蔵に届かない（絵が読めない）</div></td>
+        <td><strong>開始:</strong> 素材蔵（kura.vibe.co.jp）宛のリクエストを遮断した状態で開く。<br><strong>タスク:</strong> 通常どおり操作してみる</td>
+        <td>（正解を書かない。実際に何が起きるかを観察する）</td>
+        <td><strong>観察:</strong> 「顕れています…」の待ちが出続けるか／エラーメッセージが出るか／保存ボタンの状態／どれくらい待たされた末に何が起きるか</td>
+        <td><span class="risk-low">non-mutating</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <footer>
+    観察のたびに <code>results.jsonl</code> へ1行ずつ追記する。<code>observed</code> と <code>interpretation</code> は必ず分ける。
+    証拠（スクリーンショット・実測値・タイムスタンプ）を必ず添える。
+  </footer>
+</main>
+</body>
+</html>

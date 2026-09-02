@@ -1,0 +1,9 @@
+{
+  "purpose": "B-4で観察した「選んだ柱が中央へ寄らない」がリストの端（先頭・末尾）固有の現象か、中ほどでも起きるかを切り分けるための追試",
+  "strip_geometry": { "scrollHeight": 2089, "clientHeight": 660, "maxScrollTop": 1429 },
+  "cases": {
+    "karma_middle_of_list": { "delta_px_after_settle": 0.5, "scrollTop": 1149 },
+    "shinra_last_member_of_roster": { "delta_px_after_settle": 295.5, "scrollTop": 1429, "note": "scrollTop がリストの最大値(maxScrollTop)に張り付いている＝中央へ寄せる余地が無い" },
+    "sakuya_first_member_of_roster": { "delta_px_after_settle": 295.5, "scrollTop": 0, "note": "scrollTop が0に張り付いている＝上方向に寄せる余地が無い" }
+  }
+}

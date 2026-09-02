@@ -1,0 +1,37 @@
+{
+  "schema_version": "2.0",
+  "run_id": "n4v8",
+  "project_name": "夜じたて",
+  "test_mode": "hybrid",
+  "environment": "local (http://127.0.0.1:<自動割当ポート>/ — 観察スクリプトが配信)",
+  "config_path": "ut.config.yaml",
+  "scenario_source": "docs/ut/scenarios/UTシナリオ_20260903_moderator.html",
+  "started_at": "2026-09-03T01:09:00+09:00",
+  "updated_at": "2026-09-03T01:45:54+09:00",
+  "status": "closed",
+  "participant_ids": ["AI-P01"],
+  "scenario_counts": {
+    "total": 13,
+    "completed": 10,
+    "with_friction": 2,
+    "failed_or_ng": 0,
+    "blocked": 0,
+    "skipped": 1,
+    "pending": 0
+  },
+  "completed_scenario_ids": ["A-1", "A-2", "A-3", "B-4", "B-5", "B-6", "B-7", "C-8", "D-10", "E-11", "E-12", "E-13"],
+  "pending_scenario_ids": [],
+  "created_test_data": [
+    "localStorage@127.0.0.1:<port>（各 browser context・閉じた時点で消滅）: yo-jitate.pick"
+  ],
+  "cleanup_status": "completed",
+  "notes": [
+    "参加者は人間ではない。AI（検品担当・結）がpuppeteer-core（Chrome実機バイナリ）で初見の遊び手を代行し、実際に操作した。人間の初見の言語化・体感速度・実指のスワイプ・共有シートは未実施のまま残す（C-9は実機のみ・not-tested）",
+    "本番originには一切触れない。UT originは自作の静的サーバー（charset付き・自動割当ポート）で、終了時に閉じた",
+    "着手前にscripts/check-layout.jsを単独実行し150項目すべて通ることを確認済み（baseline.md）",
+    "【run固有の制約】A-1〜E-13の各シナリオは同一browser context内で新しいページを順に開いて実行したため、localStorage（yo-jitate.pick）が前のシナリオから引き継がれた。B-5・B-6・B-7の『開始時の表示』はこの持ち越しの影響を受けている（B-5「シンラ」表示・B-7の元計測でのfreshLoadMs=null）。B-7はbrowser.createBrowserContext()で完全に独立させた条件で測り直した（obs-b7-recheck.json）。B-4・E-11などコアの合否判定自体はこの持ち越しの影響を受けない",
+    "B-4で『選んだ柱が列の中央へ寄らない』ケースを見つけたため、追試（obs-b4-recheck.json）で切り分けた。中ほどの柱は正しく中央へ寄る（誤差0.5px）。リストの先頭・末尾に近い柱はscrollTopがコンテナの可動範囲の限界（0またはmaxScrollTop）に張り付き、中央へ寄せる余地が無い",
+    "E-13（素材蔵に届かない）で、saveボタンが恒久的にdisabledのまま・画面上に見えるエラー表示が一切無い・唯一の記録は≡の札の中のdetails要素（#log）だけ、という状態を確認した",
+    "puppeteer.launchのprotocolTimeoutが既定のままだった1回目の実行でCDPのRuntime.callFunctionOnがタイムアウトした（B-7の内部Promiseに上限が無かったため）。__timeToEnableに12秒の上限を追加し、protocolTimeoutを60秒に設定して再実行し、正常に完走した"
+  ]
+}
