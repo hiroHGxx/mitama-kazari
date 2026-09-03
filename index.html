@@ -1293,6 +1293,9 @@
     var box = document.getElementById('dailyBox');
     document.getElementById('dailySize').textContent = W + ' × ' + H;
     document.getElementById('fitSize').textContent = W + ' × ' + H;   // 芯の一行（保存の上）にも同じ寸法
+    // 2026-09-03 オーナー裁定: 毎朝の一枚は**案内から外す**（端末側の自動実行が日によって走らず安定しないため・非公開）。
+    // 仕組み（毎朝の焼き・Release・ショートカット）は動かしたまま、URL の後ろに #daily を付けたときだけ ≡ の札に出す（オーナー用の口）
+    if (!/(?:^|[#&])daily(?:$|[&=])/.test(location.hash)) return;
     if (PUBLISHED.indexOf(key) < 0) return;          // 合う寸法が無いなら出さない（合わない絵を渡さない）
     var url = 'https://github.com/hiroHGxx/yo-jitate/releases/download/daily/yo-jitate-' + key + '.jpg';
     document.getElementById('dailyUrl').textContent = url;

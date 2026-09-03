@@ -300,10 +300,9 @@ async function main() {
           scrollable: getComputedStyle(document.querySelector('#menu .pick-body')).overflowY
         };
       });
-      judge(inside.daily && !inside.dailyHidden, '中に「毎朝ひとりでに替えるなら」がある（寸法が合うとき出る）',
+      judge(inside.daily && inside.dailyHidden, '「毎朝ひとりでに替えるなら」は案内から外れている（#daily 無しでは出ない・2026-09-03 裁定）',
         `#dailyBox hidden=${inside.dailyHidden}`);
-      judge(inside.url.indexOf('yo-jitate-1179x2556.jpg') > 0, '毎朝の一枚のURLがこの端末の寸法で入る', inside.url);
-      judge(inside.copy, '中に「URLをコピー」がある');
+      judge(inside.url === '', '毎朝の一枚のURLは案内には入らない', inside.url || '（空）');
       judge(inside.log, '中に「この端末で通ったこと」（#log）がある');
       judge(inside.howto, '中に「壁紙にする手順」がある');
       judge(inside.text.indexOf('二次創作') >= 0, '脚注に二次創作の明記がある');
@@ -311,19 +310,39 @@ async function main() {
       judge(inside.text.indexOf('破線は保存画像には入りません') >= 0, '脚注に破線の但し書きが残っている');
       judge(inside.scrollable === 'auto', '札の中は縦にスクロールする（.pick-body）', inside.scrollable);
 
-      // #copyUrl が従来どおり動く
-      await page.evaluate(() => { document.getElementById('dailyBox').open = true; });
-      await page.click('#copyUrl');
+      judge(errors.length === 0, '例外が出ていない', errors.join(' / '));
+      await page.close();
+
+      // オーナー用の口: #daily を付けたときだけ毎朝の節が出て、#copyUrl が従来どおり動く（仕組みは動かしたまま）
+      const p2 = await browser.newPage();
+      await p2.setViewport({ width: 393, height: 852, deviceScaleFactor: 2 });
+      await p2.evaluateOnNewDocument(() => {
+        window.__clip = [];
+        Object.defineProperty(navigator, 'clipboard', {
+          configurable: true,
+          get: () => ({ writeText: t => { window.__clip.push(t); return Promise.resolve(); } })
+        });
+      });
+      await p2.goto(base + '#size=1179x2556&daily', { waitUntil: 'load' });
+      await ready(p2);
+      await p2.click('#menuBtn');
+      const own = await p2.evaluate(() => ({
+        hidden: document.getElementById('dailyBox').hidden,
+        url: (document.getElementById('dailyUrl').textContent || '').trim()
+      }));
+      judge(!own.hidden, '#daily を付けると「毎朝ひとりでに替えるなら」が出る（オーナー用）', `hidden=${own.hidden}`);
+      judge(own.url.indexOf('yo-jitate-1179x2556.jpg') > 0, '#daily のとき毎朝の一枚のURLがこの端末の寸法で入る', own.url);
+      await p2.evaluate(() => { document.getElementById('dailyBox').open = true; });
+      await p2.click('#copyUrl');
       await new Promise(r => setTimeout(r, 200));
-      const cp = await page.evaluate(() => ({
+      const cp = await p2.evaluate(() => ({
         n: window.__clip.length, last: window.__clip[window.__clip.length - 1] || '',
         label: document.getElementById('copyUrl').textContent.trim()
       }));
       judge(cp.n === 1 && cp.last.indexOf('yo-jitate-1179x2556.jpg') > 0, '「URLをコピー」がクリップボードへ書く',
         `${cp.n}回 / ${cp.last}`);
       judge(cp.label === '写しました', '写したことが釦に出る', cp.label);
-      judge(errors.length === 0, '例外が出ていない', errors.join(' / '));
-      await page.close();
+      await p2.close();
     }
 
     /* ---------- 3 顔アイコン29柱 ---------- */
